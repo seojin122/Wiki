@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv/
+env/
+pip-log.txt
+pip-delete-this-file.txt
+
+# Django
+local_settings.py
+settings_dev.py
+.env
+*.sqlite3
+
+# Media and Static
+/media
+/static
+
+# IDE
+.idea/
+.vscode/
+
+# OS generated files
+.DS_Store
+Thumbs.db
