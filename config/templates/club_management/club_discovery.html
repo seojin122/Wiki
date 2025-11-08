@@ -61,16 +61,18 @@
                     
                     <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                         <option value="">카테고리 전체</option>
-                        {% for category in categories %}
-                            <option value="{{ category.pk }}">{{ category.name }}</option>
-                        {% endfor %}
+                        <option value="sports">체육 🏀</option>
+                        <option value="art">미술/공예 🎨</option>
+                        <option value="music">음악/악기 🎵</option>
+                        <option value="cooking">요리/베이커리 🍳</option>
+                        <option value="book">독서 📚</option>
                     </select>
                     
                     <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                         <option value="">활동 지역</option>
                         <option value="seoul">서울</option>
                         <option value="gyeonggi">경기</option>
-                        <!-- TODO: 지역 데이터베이스 연동 -->
+                        <!-- ... (추가 지역) -->
                     </select>
                 </div>
                 <button class="mt-4 w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200">
@@ -80,34 +82,47 @@
 
             <!-- Club List (FR3.2) -->
             <div id="club-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                
-                {% for club in clubs %}
-                <!-- Club Card (Data rendered from Django) -->
-                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer" ></div>
-                     onclick="showPage('detail', {{ club.pk }})">
+                <!-- Club Card Template -->
+                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer" 
+                     onclick="showPage('detail', 1)">
                     <div class="p-6">
                         <span class="text-xs font-semibold px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full">
-                            {{ club.category.name }}
+                            체육 🏀
                         </span>
-                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">{{ club.name }}</h3>
+                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">주말 농구 팀 '슬램덩커스'</h3>
                         <p class="text-sm text-gray-600 mt-1 line-clamp-2">
-                            {{ club.description|truncatechars:100 }}
+                            매주 토요일 오후 3시, 실내 코트에서 즐겁게 농구할 멤버를 찾습니다! 초보자 환영!
                         </p>
                         <div class="mt-4 flex items-center text-sm text-gray-500">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
-                            <span>{{ club.region }} | 멤버 {{ club.member_count }}명</span>
+                            <span>서울/경기 | 멤버 12명</span>
                         </div>
                     </div>
                 </div>
-                {% empty %}
-                <!-- Placeholder for no results -->
-                <div class="col-span-full text-center py-10">
-                    <p class="text-lg text-gray-500">등록된 모임이 없습니다. 새로운 모임을 만들어보세요!</p>
-                </div>
-                {% endfor %}
 
+                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer"
+                     onclick="showPage('detail', 2)">
+                    <div class="p-6">
+                        <span class="text-xs font-semibold px-3 py-1 bg-pink-100 text-pink-600 rounded-full">
+                            미술/공예 🎨
+                        </span>
+                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">퇴근 후 힐링 드로잉</h3>
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
+                            매주 수요일 저녁, 따뜻한 카페에서 함께 그림을 그리며 하루를 마무리해요.
+                        </p>
+                        <div class="mt-4 flex items-center text-sm text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
+                            <span>강남구 | 멤버 8명</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Add more cards dynamically with JS -->
             </div>
 
+            <!-- Placeholder for no results -->
+            <div id="no-results" class="hidden text-center py-10">
+                <p class="text-lg text-gray-500">검색 결과가 없습니다. 다른 조건으로 찾아보세요.</p>
+            </div>
         </section>
 
         <!-- 2. Detail Page (Hidden by Default) -->
@@ -121,17 +136,11 @@
             <!-- Club Header -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
                 <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full">
-                    <!-- Data will be loaded by JS -->
+                    체육 🏀
                 </span>
-                <h2 id="detail-name" class="mt-3 text-4xl font-extrabold text-gray-900">
-                    <!-- Data will be loaded by JS -->
-                </h2>
-                <p id="detail-region" class="text-lg text-gray-600 mt-2">
-                    <!-- Data will be loaded by JS -->
-                </p>
-                <p id="detail-member-count" class="text-base text-gray-500 mt-1">
-                    <!-- Data will be loaded by JS -->
-                </p>
+                <h2 id="detail-name" class="mt-3 text-4xl font-extrabold text-gray-900">주말 농구 팀 '슬램덩커스'</h2>
+                <p id="detail-region" class="text-lg text-gray-600 mt-2">활동 지역: 서울/경기</p>
+                <p id="detail-member-count" class="text-base text-gray-500 mt-1">현재 멤버: 12명</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -140,7 +149,7 @@
                     <div class="bg-white p-6 rounded-xl shadow-md">
                         <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 소개 (FR2.4)</h3>
                         <p id="detail-description" class="text-gray-700 leading-relaxed">
-                            <!-- Data will be loaded by JS -->
+                            저희 슬램덩커스는 실력에 상관없이 농구를 사랑하는 모든 분들을 환영합니다. 매주 토요일 정기 모임을 통해 친목을 다지고 건강한 땀을 흘리고 있습니다. 단순한 운동을 넘어, 팀워크와 열정을 함께 나누는 모임이 되겠습니다.
                         </p>
                     </div>
 
@@ -247,12 +256,6 @@
     </footer>
 
     <script>
-        // 현재는 서버에서 템플릿 렌더링을 위해 더미 데이터만 사용합니다.
-        // 실제 데이터는 Django View에서 ClubDetail API를 통해 가져와야 합니다.
-        
-        // **JS에서 사용할 모임 데이터는 템플릿을 통해 JSON 형태로 받아와야 합니다.**
-        // 현재는 템플릿에서 직접 데이터를 사용하므로 JS 로직은 변경하지 않아도 됩니다.
-
         // 페이지 전환 함수
         function showPage(pageId, clubId = null) {
             document.querySelectorAll('.page-content').forEach(page => {
@@ -285,8 +288,6 @@
                 }
             };
             
-            // TODO: 실제 뷰에서는 /api/clubs/{clubId} 엔드포인트를 호출해야 합니다.
-
             const club = mockData[clubId];
             if (club) {
                 document.getElementById('detail-name').textContent = club.name;
