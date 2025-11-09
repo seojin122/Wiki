@@ -3,137 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HobbyFlow - 취미 동호회 운영 자동화</title>
-    <!-- Tailwind CSS CDN -->
+    <title>HobbyFlow - 모임 상세</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Inter Font (Preload) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* Inter Font 적용 및 기본 스타일 설정 */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f7f9fb;
-        }
-        /* 커스텀 스크롤바 (선택 사항) */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #e2e8f0;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
         }
     </style>
 </head>
 <body class="min-h-screen antialiased">
 
-    <!-- Header Navigation -->
     <header class="bg-white shadow-md sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2 cursor-pointer" onclick="showPage('discovery')">
-                <!-- Lucide Icons for simplicity -->
+            <div class="flex items-center space-x-2 cursor-pointer" onclick="window.location.href='/'">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m14 10-2 2-2-2"></path></svg>
-                <h1 class="text-xl font-bold text-gray-800">HobbyFlow</h1>
+                <h1 class="text-xl font-bold text-gray-800">Wiki</h1>
             </div>
             <nav class="flex space-x-4">
-                <button class="text-sm font-medium text-blue-600 hover:text-blue-800 transition duration-150">내 모임</button>
-                <button class="text-sm font-medium text-gray-600 hover:text-blue-800 transition duration-150" onclick="showPage('discovery')">모임 찾기</button>
-                <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200" onclick="window.location.href='/auth/'">로그인/가입</button>
+                <button class="text-sm font-medium text-gray-600 hover:text-blue-800 transition duration-150" onclick="window.location.href='my/'">내 모임</button>
+                <button class="text-sm font-medium text-gray-600 hover:text-blue-800 transition duration-150" onclick="window.location.href='/'">모임 찾기</button>
+                <button class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200" onclick="window.location.href='auth/'">로그인/가입</button>
             </nav>
         </div>
     </header>
 
-    <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
-        <!-- 1. Discovery Page (Default View) -->
-        <section id="discovery-page" class="page-content space-y-8">
-            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">다양한 취미 동호회를 찾아보세요!</h2>
-            
-            <!-- Search & Filter Area (FR3.1) -->
-            <div class="bg-white p-6 rounded-xl shadow-lg">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" placeholder="모임 이름, 활동 내용 검색" class="col-span-1 md:col-span-2 p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                    
-                    <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">카테고리 전체</option>
-                        <option value="sports">체육 🏀</option>
-                        <option value="art">미술/공예 🎨</option>
-                        <option value="music">음악/악기 🎵</option>
-                        <option value="cooking">요리/베이커리 🍳</option>
-                        <option value="book">독서 📚</option>
-                    </select>
-                    
-                    <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">활동 지역</option>
-                        <option value="seoul">서울</option>
-                        <option value="gyeonggi">경기</option>
-                        <!-- ... (추가 지역) -->
-                    </select>
-                </div>
-                <button class="mt-4 w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200">
-                    🔍 모임 검색
-                </button>
-            </div>
-
-            <!-- Club List (FR3.2) -->
-            <div id="club-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <!-- Club Card Template -->
-                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer" 
-                     onclick="showPage('detail', 1)">
-                    <div class="p-6">
-                        <span class="text-xs font-semibold px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full">
-                            체육 🏀
-                        </span>
-                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">주말 농구 팀 '슬램덩커스'</h3>
-                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
-                            매주 토요일 오후 3시, 실내 코트에서 즐겁게 농구할 멤버를 찾습니다! 초보자 환영!
-                        </p>
-                        <div class="mt-4 flex items-center text-sm text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
-                            <span>서울/경기 | 멤버 12명</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer"
-                     onclick="showPage('detail', 2)">
-                    <div class="p-6">
-                        <span class="text-xs font-semibold px-3 py-1 bg-pink-100 text-pink-600 rounded-full">
-                            미술/공예 🎨
-                        </span>
-                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">퇴근 후 힐링 드로잉</h3>
-                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
-                            매주 수요일 저녁, 따뜻한 카페에서 함께 그림을 그리며 하루를 마무리해요.
-                        </p>
-                        <div class="mt-4 flex items-center text-sm text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
-                            <span>강남구 | 멤버 8명</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Add more cards dynamically with JS -->
-            </div>
-
-            <!-- Placeholder for no results -->
-            <div id="no-results" class="hidden text-center py-10">
-                <p class="text-lg text-gray-500">검색 결과가 없습니다. 다른 조건으로 찾아보세요.</p>
-            </div>
-        </section>
-
-        <!-- 2. Detail Page (Hidden by Default) -->
-        <section id="detail-page" class="page-content hidden space-y-8">
-            <!-- Back Button -->
-            <button onclick="showPage('discovery')" class="flex items-center text-blue-600 hover:text-blue-800 transition duration-150 mb-6">
+        <section id="detail-page" class="space-y-8">
+            <button onclick="window.location.href='/'" class="flex items-center text-blue-600 hover:text-blue-800 transition duration-150 mb-6">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
                 <span class="ml-1">모임 목록으로 돌아가기</span>
             </button>
 
-            <!-- Club Header -->
             <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
                 <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full">
                     체육 🏀
@@ -144,7 +49,6 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Main Content (LG Col Span 2) -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white p-6 rounded-xl shadow-md">
                         <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 소개 (FR2.4)</h3>
@@ -174,12 +78,10 @@
                     </div>
                 </div>
 
-                <!-- Sidebar (LG Col Span 1) -->
                 <div class="lg:col-span-1 space-y-6">
                     <div class="bg-white p-6 rounded-xl shadow-md sticky top-20">
                         <h3 class="text-2xl font-bold text-gray-800 mb-4">모임 리더</h3>
                         <div class="flex items-center space-x-3 border-b pb-4 mb-4">
-                            <!-- Placeholder Profile Pic -->
                             <div class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-bold">R</div>
                             <div>
                                 <p class="font-semibold text-gray-900">농구왕 리더 (ID: leader123)</p>
@@ -200,7 +102,6 @@
             </div>
         </section>
 
-        <!-- 3. Apply Modal (Hidden by Default) -->
         <div id="apply-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 transition-opacity"
              onclick="if(event.target.id === 'apply-modal') document.getElementById('apply-modal').classList.add('hidden')">
             
@@ -241,41 +142,24 @@
                     </div>
                 </form>
 
-                <!-- Success/Error Message Box -->
                 <div id="modal-message" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
             </div>
         </div>
 
     </main>
     
-    <!-- Footer -->
     <footer class="mt-12 py-6 border-t border-gray-200 bg-white">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
-            © 2025 HobbyFlow. 취미 모임 운영 자동화 플랫폼.
+            © 2025 Wiki. 취미 모임 운영 자동화 플랫폼.
         </div>
     </footer>
 
     <script>
-        // 페이지 전환 함수
-        function showPage(pageId, clubId = null) {
-            document.querySelectorAll('.page-content').forEach(page => {
-                page.classList.add('hidden');
-            });
+        // 모임 상세 페이지 데이터 업데이트 (URL 쿼리 파라미터를 사용하여 목업 데이터 로드)
+        function loadGroupDetail() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const clubId = urlParams.get('id');
 
-            const page = document.getElementById(pageId + '-page');
-            if (page) {
-                page.classList.remove('hidden');
-            }
-
-            // 모임 상세 페이지로 이동 시, 데이터 업데이트 (현재는 목업 데이터)
-            if (pageId === 'detail' && clubId) {
-                updateDetailPage(clubId);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-
-        // 모임 상세 페이지 데이터 업데이트 (모델 연결 시 여기에 실제 fetch 로직 추가)
-        function updateDetailPage(clubId) {
             // MVP 목표: 실제 DB 연결 전까지는 목업 데이터 사용
             const mockData = {
                 1: {
@@ -290,11 +174,17 @@
             
             const club = mockData[clubId];
             if (club) {
+                document.title = `HobbyFlow - ${club.name}`;
                 document.getElementById('detail-name').textContent = club.name;
                 document.getElementById('detail-category').textContent = club.category;
                 document.getElementById('detail-region').textContent = `활동 지역: ${club.region}`;
                 document.getElementById('detail-member-count').textContent = `현재 멤버: ${club.members}명`;
                 document.getElementById('detail-description').textContent = club.description;
+            } else {
+                // 모임 ID가 없을 경우 리스트 페이지로 리다이렉트
+                document.getElementById('detail-name').textContent = "모임을 찾을 수 없습니다.";
+                document.getElementById('detail-category').textContent = "오류";
+                document.getElementById('detail-description').textContent = "잘못된 모임 정보입니다.";
             }
         }
 
@@ -323,7 +213,7 @@
 
         // 페이지 로드 시 초기 상태 설정
         document.addEventListener('DOMContentLoaded', () => {
-            showPage('discovery');
+            loadGroupDetail();
         });
     </script>
 </body>

@@ -1,32 +1,48 @@
 from django.shortcuts import render
-from django.db.models import Count # 멤버 수 카운트를 위해 Count 임포트
-from .models import Club, Category, ClubMember # 필요한 모델 임포트
+from django.db.models import Count
+from .models import Club, Category, ClubMember 
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User # Django 기본 User 모델 사용 가정
+from django.contrib.auth.models import User 
 from django.contrib import messages
+from django.http import Http404
 
-# 모임 탐색 및 목록 페이지 (FR3.2)
-def club_discovery_view(request):
-    """
-    모임 목록 및 검색 페이지를 렌더링하고, 실제 모임 데이터를 템플릿에 전달합니다.
-    """
-    # 실제 데이터 로직
-    clubs = Club.objects.filter(is_active=True).select_related('category').annotate(
-        member_count=Count('clubmember', distinct=True) # 중복 카운트 방지
-    ).order_by('-created_at') 
+# --- 기본 페이지 렌더링 View ---
 
-    categories = Category.objects.all()
+def discovery_page(request):
+    """모임 목록 (메인 페이지)을 렌더링합니다."""
+    return render(request, 'discovery.html')
+
+def group_detail_page(request, group_id):
+    """특정 모임의 상세 페이지를 렌더링합니다."""
+    # 실제 구현 시, group_id를 사용하여 DB에서 모임 데이터를 조회해야 합니다.
+    # 현재는 목업 데이터가 HTML 내부에 있으므로, 단순히 렌더링만 합니다.
     
-    context = {
-        'page_title': '모임 찾기',
-        'clubs': clubs,
-        'categories': categories,
-    }
+    # URL로 group_id를 받았으므로, group_detail.html을 렌더링합니다.
+    return render(request, 'group_detail.html', {'group_id': group_id})
+
+
+def my_page_view(request):
+    """마이페이지를 렌더링합니다."""
+    # 실제 구현 시, 로그인된 사용자의 데이터를 context로 전달해야 합니다.
+    return render(request, 'my_page.html')
+
+
+class AuthView(View):
+    template_name = 'login_signup.html'
+
+    def get(self, request):
+        """로그인/회원가입 페이지를 렌더링합니다."""
+        return render(request, self.template_name)
+
+    def post(self, request):
+        # ... 로그인 및 회원가입 POST 처리 로직 (이전과 동일) ...
+        # 여기서는 생략합니다. 실제 구현 시 View를 분리하는 것이 좋습니다.
+        return redirect('discovery')
     
-    # templates/club_management/club_discovery.html 파일을 렌더링합니다. (경로 확인)
-    return render(request, 'club_discovery.html', context)
+
+    
 
 class LoginView(View):
     template_name = 'login_signup.html' # HTML 파일 이름
@@ -116,3 +132,11 @@ def user_logout(request):
     logout(request)
     messages.info(request, '로그아웃되었습니다. 다시 만나요!')
     return redirect('discovery_url_name') # 모임 찾기 페이지로 리다이렉트
+
+
+
+
+# your_app/views.py
+def my_page_view(request):
+    """마이페이지를 렌더링합니다."""
+    return render(request, 'mypage.html') # 이 부분에서 my_page.html을 요청하고 있습니다.
