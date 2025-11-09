@@ -17,7 +17,7 @@ class ClubMemberAdmin(admin.ModelAdmin):
     list_display = ('club', 'user', 'role', 'status', 'joined_at')
     list_filter = ('club', 'role', 'status')
     search_fields = ('club__name', 'user__username')
-    raw_id_fields = ('club', 'user') # 사용자/모임이 많아질 경우 효율적
+    raw_id_fields = ('club', 'user') 
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
