@@ -140,8 +140,8 @@
     <script>
         // 모임 상세 페이지 데이터 업데이트 (URL 쿼리 파라미터를 사용하여 목업 데이터 로드)
         function loadGroupDetail() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const clubId = urlParams.get('id');
+            const pathSegments = window.location.pathname.split('/').filter(Boolean);
+            const clubId = pathSegments[pathSegments.length - 1];
 
             // MVP 목표: 실제 DB 연결 전까지는 목업 데이터 사용
             const mockData = {

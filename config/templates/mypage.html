@@ -18,19 +18,7 @@
 </head>
 <body class="min-h-screen antialiased flex flex-col">
 
-    <header class="bg-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2 cursor-pointer" onclick="window.location.href='/'">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m14 10-2 2-2-2"></path></svg>
-                <h1 class="text-xl font-bold text-gray-800">Wiki</h1>
-            </div>
-            <nav class="flex space-x-4">
-                <button class="text-sm font-medium text-blue-600 hover:text-blue-800 transition duration-150" onclick="window.location.href='my/'">내 모임</button>
-                <button class="text-sm font-medium text-gray-600 hover:text-blue-800 transition duration-150" onclick="window.location.href='/'">모임 찾기</button>
-                <button class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">로그아웃</button>
-            </nav>
-        </div>
-    </header>
+    {% include 'components/header.html' %}
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         <h2 class="text-3xl font-extrabold text-gray-900 mb-8">🏠 마이페이지</h2>
@@ -133,11 +121,7 @@
         </div>
     </main>
     
-    <footer class="mt-auto py-6 border-t border-gray-200 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
-            © 2025 Wiki. 취미 모임 운영 자동화 플랫폼.
-        </div>
-    </footer>
+    {% include 'components/footer.html' %}
 
 </body>
 </html>

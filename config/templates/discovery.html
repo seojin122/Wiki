@@ -61,40 +61,14 @@
             </div>
 
             <div id="club-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer" 
-                     onclick="window.location.href='group_detail.html?id=1'">
-                    <div class="p-6">
-                        <span class="text-xs font-semibold px-3 py-1 bg-indigo-100 text-indigo-600 rounded-full">
-                            체육 🏀
-                        </span>
-                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">주말 농구 팀 '슬램덩커스'</h3>
-                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
-                            매주 토요일 오후 3시, 실내 코트에서 즐겁게 농구할 멤버를 찾습니다! 초보자 환영!
-                        </p>
-                        <div class="mt-4 flex items-center text-sm text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
-                            <span>서울/경기 | 멤버 12명</span>
-                        </div>
+                {% for club in clubs %}
+                    {% include "club_card.html" with club=club %}
+                {% empty %}
+                    <div class="text-center text-gray-500 py-10 col-span-full">
+                        <p class="text-lg text-gray-500">등록된 모임이 없습니다.</p>
                     </div>
-                </div>
-
-                <div class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer"
-                     onclick="window.location.href='group_detail.html?id=2'">
-                    <div class="p-6">
-                        <span class="text-xs font-semibold px-3 py-1 bg-pink-100 text-pink-600 rounded-full">
-                            미술/공예 🎨
-                        </span>
-                        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">퇴근 후 힐링 드로잉</h3>
-                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
-                            매주 수요일 저녁, 따뜻한 카페에서 함께 그림을 그리며 하루를 마무리해요.
-                        </p>
-                        <div class="mt-4 flex items-center text-sm text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
-                            <span>강남구 | 멤버 8명</span>
-                        </div>
-                    </div>
-                </div>
-                </div>
+                {% endfor %}
+            </div>
 
             <div id="no-results" class="hidden text-center py-10">
                 <p class="text-lg text-gray-500">검색 결과가 없습니다. 다른 조건으로 찾아보세요.</p>

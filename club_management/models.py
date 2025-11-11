@@ -1,150 +1,161 @@
 from django.db import models
-from django.contrib.auth import get_user_model
-from django.utils import timezone
+from django.contrib.auth.models import AbstractUser
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
 
-# 장고 기본 사용자 모델 가져오기 (FR1.1, FR1.2)
-User = get_user_model()
 
-# 🧩 A. 유연한 모임 카테고리
-class Category(models.Model):
-    """
-    모임 카테고리 모델 (예: 체육, 미술, 음악).
-    """
-    name = models.CharField(max_length=50, unique=True, verbose_name="카테고리 이름")
-    description = models.TextField(blank=True, verbose_name="설명")
+
+# 관리자
+from django.contrib.auth.models import BaseUserManager
+
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError('The Email must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        extra_fields.setdefault('role', 'MANAGER') 
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        
+        return self.create_user(email, password, **extra_fields)
+
+
+# 사용자
+class User(AbstractUser):
+
+    class RoleStatus(models.TextChoices):
+        # ERD의 role (ENUM)
+        GENERAL = 'GENERAL', '일반 회원'
+        ADMIN = 'ADMIN', '운영자'
+        MANAGER = 'MANAGER', '총관리자'
+    username = None
+    email = models.EmailField(_('email address'), unique=True)
+    nickname = models.CharField(max_length=50, unique=True, default='none', verbose_name = "닉네임")
+    role = models.CharField( max_length=50, choices=RoleStatus.choices, default=RoleStatus.GENERAL, verbose_name='사용자 역할')
+
+    objects = CustomUserManager()
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['nickname'] #email, password는 기본적으로 유구된다.
 
     def __str__(self):
-        return self.name
-
+        return self.nickname
+    
     class Meta:
-        verbose_name_plural = "카테고리"
+        verbose_name='사용자'
+        verbose_name_plural = '사용자 목록'
 
+# 모임
+class Group(models.Model):
+    class GroupCategory(models.TextChoices):
+        SPORTS = 'SPORTS', '체육'
+        ART = 'ART', '미술'
+        MUSIC = 'MUSIC', '음악'
+        COOKING = 'COOKING', '요리/베이커리'
+        READING = 'READING', '독서'
+        OTHER = 'OTHER', '기타'
+    class GroupStatus(models.TextChoices):
+        RECRUITING = 'RECRUITING', '모집 중'
+        CLOSED = 'CLOSED', '모집 마감'
+        OPERATING = 'OPERATING', '운영 중'
 
-class Club(models.Model):
-    """
-    모임/동호회 정보 모델 (FR2.1, FR2.2, FR2.4).
-    """
-    name = models.CharField(max_length=100, unique=True, verbose_name="모임 이름")
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, verbose_name="카테고리")
+    name = models.CharField(max_length=100, verbose_name='모임 이름')
+    category = models.CharField( max_length=50, choices=GroupCategory.choices,verbose_name='카테고리')
     region = models.CharField(max_length=50, verbose_name="활동 지역")
-    description = models.TextField(verbose_name="모임 소개")
-    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_clubs', verbose_name="생성자")
-    is_active = models.BooleanField(default=True, verbose_name="활동 중 여부")
+    status = models.CharField( max_length=50,choices=GroupStatus.choices,default=GroupStatus.RECRUITING, verbose_name='모임 상태')
+    description = models.TextField(verbose_name='모임 소개')
+    max_members = models.PositiveIntegerField(verbose_name='최대 인원')
+    leader = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_groups', verbose_name='개설자')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
-    
+
+#모임 멤버
+class GroupMember(models.Model):
+    class MemberRole(models.TextChoices):
+        LEADER = 'LEADER', '리더' 
+        ADMIN = 'ADMIN', '총무/운영진' 
+        MEMBER = 'MEMBER', '일반 회원'
+        PENDING = 'PENDING', '가입 대기 중'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    group = models.ForeignKey(Group, on_delete=models.CASCADE)
+    member_role = models.CharField( max_length=50, choices=MemberRole.choices, default=MemberRole.PENDING, verbose_name='멤버 역할/권한')
+    joined_date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
-        verbose_name = "모임"
-        verbose_name_plural = "모임 목록"
-
-
-# 🤝 B. 모임 운영 및 멤버 관리
-class ClubMember(models.Model):
-    """
-    모임과 멤버를 연결하고 역할/상태를 관리하는 중간 모델 (FR1.3, FR2.3).
-    """
-    ROLE_CHOICES = (
-        ('LEADER', '리더 (모임 생성자/최고 관리자)'),
-        ('MANAGER', '총무/운영진'),
-        ('MEMBER', '일반 멤버'),
-    )
-    STATUS_CHOICES = (
-        ('PENDING', '가입 신청 대기'),
-        ('APPROVED', '승인 완료'),
-        ('REJECTED', '거절됨'),
-    )
-
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, verbose_name="모임")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="사용자")
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='MEMBER', verbose_name="역할")
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING', verbose_name="가입 상태")
-    joined_at = models.DateTimeField(auto_now_add=True)
+        unique_together = ('user', 'group')
+        verbose_name = '모임 멤버'
+        verbose_name_plural = '모임 멤버 목록'
 
     def __str__(self):
-        return f'{self.user.username} - {self.club.name} ({self.get_status_display()})'
-    
-    class Meta:
-        unique_together = ('club', 'user') # 한 모임에 같은 멤버는 중복될 수 없음
-        verbose_name = "모임 멤버"
-        verbose_name_plural = "모임 멤버 관리"
+        return f'{self.user.username} - {self.group.name} ({self.get_member_role_display()})'
 
-# 🗓️ C. 일정 및 출석 관리
-class Event(models.Model):
-    """
-    모임 활동 일정 모델 (FR4.1).
-    """
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, verbose_name="모임")
-    title = models.CharField(max_length=100, verbose_name="일정 제목")
-    start_time = models.DateTimeField(verbose_name="시작 시간")
-    end_time = models.DateTimeField(verbose_name="종료 시간")
-    location = models.CharField(max_length=255, blank=True, verbose_name="장소")
-    description = models.TextField(blank=True, verbose_name="세부 내용")
-    required_fee = models.IntegerField(default=0, verbose_name="참석 시 회비(선택)")
+
+# 활동 일정
+class ActivitySchedule(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='schedules')
+    title = models.CharField(max_length=255, verbose_name='일정 제목')
+    date_time = models.DateTimeField(verbose_name='날짜 및 시간')
+    location = models.CharField(max_length=255, verbose_name='장소')
+    content = models.TextField(verbose_name='활동 내용')
+    participation_fee = models.PositiveIntegerField( default=0, verbose_name='참가 회비', help_text='이 일정에 참여하는 멤버가 납부해야 할 금액')
+    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_schedules')
 
     def __str__(self):
-        return f'[{self.club.name}] {self.title} ({self.start_time.strftime("%m/%d %H:%M")})'
-    
+        return f'{self.group.name} - {self.title} ({self.date_time.strftime("%Y-%m-%d %H:%M")})'
+
     class Meta:
-        ordering = ['start_time']
-        verbose_name = "모임 일정"
-        verbose_name_plural = "일정 관리"
+        ordering = ['date_time']
 
 
-class Attendance(models.Model):
-    """
-    멤버의 일정 참석 여부 (RSVP) 및 실제 출석 기록 모델 (FR4.2, FR4.3).
-    """
-    RSVP_CHOICES = (
-        ('ATTEND', '참석 예정'),
-        ('ABSENT', '불참'),
-        ('MAYBE', '미정'),
-    )
-    ACTUAL_CHOICES = (
-        ('PRESENT', '출석'),
-        ('ABSENT', '결석'),
-        ('NOT_CHECKED', '미확인'),
-    )
-
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, verbose_name="일정")
-    member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, verbose_name="모임 멤버")
+# RSVP
+class RSVP(models.Model):
+    class AttendanceStatus(models.TextChoices):
+        ATTENDING = 'ATTENDING', '참석'
+        NOT_ATTENDING = 'NOT_ATTENDING', '불참'
+        PENDING = 'PENDING', '미정/미응답' 
+        PRESENT = 'PRESENT', '출석 (운영진 체크)' 
+        ABSENT = 'ABSENT', '결석 (운영진 체크)'
     
-    rsvp_status = models.CharField(max_length=10, choices=RSVP_CHOICES, default='MAYBE', verbose_name="사전 참석 응답")
-    actual_status = models.CharField(max_length=15, choices=ACTUAL_CHOICES, default='NOT_CHECKED', verbose_name="실제 출석 여부")
-    
-    checked_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='attendance_checker', verbose_name="출석 체크 담당자")
-    checked_at = models.DateTimeField(null=True, blank=True, verbose_name="출석 체크 시간")
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    schedule = models.ForeignKey(ActivitySchedule, on_delete=models.CASCADE)
+    attendance_status = models.CharField( max_length=50, choices=AttendanceStatus.choices, default=AttendanceStatus.PENDING, verbose_name='참석/출석 상태')
+    registered_at = models.DateTimeField(auto_now_add=True, verbose_name='응답 시각')
+
+    class Meta:
+        unique_together = ('user', 'schedule')
+        verbose_name = '일정 참석 응답/출석'
+        verbose_name_plural = '일정 참석 응답/출석 목록'
 
     def __str__(self):
-        return f'{self.member.user.username} - {self.event.title}'
-
-    class Meta:
-        unique_together = ('event', 'member')
-        verbose_name = "출석/참석 기록"
-        verbose_name_plural = "출석 기록"
+        return f'{self.user.username} - {self.schedule.title}: {self.get_attendance_status_display()}'
 
 
-# 💰 D. 재정 관리 (회비/재료비)
-class FinancialRecord(models.Model):
-    """
-    모임의 수입/지출 내역 기록 모델 (FR5.1, FR5.3).
-    """
-    TYPE_CHOICES = (
-        ('INCOME', '수입 (회비, 지원금 등)'),
-        ('EXPENSE', '지출 (장소, 재료비 등)'),
-    )
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, verbose_name="모임")
-    record_type = models.CharField(max_length=10, choices=TYPE_CHOICES, verbose_name="구분")
-    amount = models.IntegerField(verbose_name="금액")
-    description = models.CharField(max_length=255, verbose_name="내역")
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="기록자")
-    recorded_at = models.DateTimeField(auto_now_add=True)
 
+# FINANCIAL_TRANSACTION)
+class FinancialTransaction(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='transactions')
+    user = models.ForeignKey( User, on_delete=models.SET_NULL,  null=True,  blank=True,related_name='financial_records',  verbose_name='관련 사용자 (납부자/지출 처리자)')
+    amount = models.PositiveIntegerField(verbose_name='금액')
+    description = models.CharField(max_length=255, verbose_name='내용')
+    transaction_date = models.DateField(auto_now_add=True, verbose_name='거래 날짜')
+    
     def __str__(self):
-        return f'{self.club.name} - {self.get_record_type_display()}: {self.amount}원'
+        return f'[{self.group.name}] {self.get_type_display()} {self.amount}원: {self.description}'
 
     class Meta:
-        ordering = ['-recorded_at']
-        verbose_name = "재정 기록"
-        verbose_name_plural = "재정 장부"
+        ordering = ['-transaction_date']
+
+

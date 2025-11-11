@@ -1,6 +1,5 @@
 from django.shortcuts import render
 from django.db.models import Count
-from .models import Club, Category, ClubMember 
 from django.shortcuts import render, redirect
 from django.views import View
 from django.contrib.auth import authenticate, login, logout
@@ -8,7 +7,58 @@ from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import Http404
 
-# --- 기본 페이지 렌더링 View ---
+from .models import (
+    User, 
+    Group,      
+    GroupMember,
+    ActivitySchedule,
+    RSVP,
+    FinancialTransaction
+)
+
+# 목 데이터 정의
+MOCK_CLUB_LIST = [
+    {
+        'id': 1,
+        'name': "주말 농구 팀 '슬램덩커스'",
+        'category': '체육 🏀',
+        'region': '서울/경기',
+        'members': 12,
+        'description': '매주 토요일 오후 3시, 실내 코트에서 즐겁게 농구할 멤버를 찾습니다! 초보자 환영!',
+        'bg_color': 'bg-indigo-100',
+        'text_color': 'text-indigo-600',
+    },
+    {
+        'id': 2,
+        'name': '퇴근 후 힐링 드로잉',
+        'category': '미술/공예 🎨',
+        'region': '강남구',
+        'members': 8,
+        'description': '매주 수요일 저녁, 따뜻한 카페에서 함께 그림을 그리며 하루를 마무리해요.',
+        'bg_color': 'bg-pink-100',
+        'text_color': 'text-pink-600',
+    },
+    {
+        'id': 3,
+        'name': '월간 독서 모임 "책갈피"',
+        'category': '독서 📚',
+        'region': '전국 (온라인)',
+        'members': 25,
+        'description': '매달 베스트셀러 한 권을 선정하여 심도 깊은 온라인 토론을 진행합니다. 독서 습관을 만들어요.',
+        'bg_color': 'bg-green-100',
+        'text_color': 'text-green-600',
+    },
+    {
+        'id': 4,
+        'name': '주방 탈출 베이킹',
+        'category': '요리/베이커리 🍳',
+        'region': '성동구',
+        'members': 6,
+        'description': '초보자를 위한 쉽고 재미있는 베이킹 클래스! 매주 새로운 레시피로 만나요.',
+        'bg_color': 'bg-yellow-100',
+        'text_color': 'text-yellow-600',
+    },
+]
 
 def discovery_page(request):
     """모임 목록 (메인 페이지)을 렌더링합니다."""
@@ -20,7 +70,10 @@ def group_detail_page(request, group_id):
     # 현재는 목업 데이터가 HTML 내부에 있으므로, 단순히 렌더링만 합니다.
     
     # URL로 group_id를 받았으므로, group_detail.html을 렌더링합니다.
-    return render(request, 'group_detail.html', {'group_id': group_id})
+    context = {
+        'clubs': MOCK_CLUB_LIST  # 목 데이터를 템플릿으로 전달
+    }
+    return render(request, 'discovery.html', context)
 
 
 def my_page_view(request):
