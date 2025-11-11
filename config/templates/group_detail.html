@@ -25,76 +25,86 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
                 <span class="ml-1">모임 목록으로 돌아가기</span>
             </button>
-
             <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
-                <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full">
-                    체육 🏀
-                </span>
-                <h2 id="detail-name" class="mt-3 text-4xl font-extrabold text-gray-900">주말 농구 팀 '슬램덩커스'</h2>
-                <p id="detail-region" class="text-lg text-gray-600 mt-2">활동 지역: 서울/경기</p>
-                <p id="detail-member-count" class="text-base text-gray-500 mt-1">현재 멤버: 12명</p>
+                {% if club %}
+                    <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full"> {{ club.category }}</span>
+                    <h2 id="detail-name" class="mt-3 text-4xl font-extrabold text-gray-900">{{ club.name }}</h2>
+                    <p id="detail-region" class="text-lg text-gray-600 mt-2">활동 지역: {{ club.region }}</p>
+                    <p id="detail-member-count" class="text-base text-gray-500 mt-1">현재 멤버: {{ club.members }}명</p>
+                {% else %}
+                    <span class="text-sm font-semibold px-3 py-1 bg-red-100 text-red-600 rounded-full">오류</span>
+                    <h2 class="mt-3 text-4xl font-extrabold text-gray-900">모임을 찾을 수 없습니다.</h2>
+                    <p class="text-lg text-gray-600 mt-2">잘못된 모임 정보입니다.</p>
+                {% endif %}
             </div>
-
+            
+            {% if club %}
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-2 space-y-6">
                     <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 소개 (FR2.4)</h3>
+                        <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 소개</h3>
                         <p id="detail-description" class="text-gray-700 leading-relaxed">
-                            저희 슬램덩커스는 실력에 상관없이 농구를 사랑하는 모든 분들을 환영합니다. 매주 토요일 정기 모임을 통해 친목을 다지고 건강한 땀을 흘리고 있습니다. 단순한 운동을 넘어, 팀워크와 열정을 함께 나누는 모임이 되겠습니다.
+                            {{ club.description }}
                         </p>
-                    </div>
-
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">최근 활동/일정 (FR4.1)</h3>
-                        <ul id="detail-activities" class="space-y-3">
-                            <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                                <div>
-                                    <p class="font-semibold text-gray-800">정기 연습: 3점 슛 마스터</p>
-                                    <p class="text-sm text-gray-500">📍 2025.12.01 (일) 15:00 | 💰 회비 5,000원</p>
-                                </div>
-                                <span class="text-sm font-medium text-green-600">참석 10명</span>
-                            </li>
-                            <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                                <div>
-                                    <p class="font-semibold text-gray-800">친선 경기: 이웃 팀과의 대결</p>
-                                    <p class="text-sm text-gray-500">📍 2025.11.24 (일) 14:00 | 💰 회비 10,000원</p>
-                                </div>
-                                <span class="text-sm font-medium text-red-600">참석 마감</span>
-                            </li>
-                        </ul>
-                    </div>
+                    </div>                
                 </div>
-
-                <div class="lg:col-span-1 space-y-6">
-                    <div class="bg-white p-6 rounded-xl shadow-md sticky top-20">
-                        <h3 class="text-2xl font-bold text-gray-800 mb-4">모임 리더</h3>
-                        <div class="flex items-center space-x-3 border-b pb-4 mb-4">
-                            <div class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-bold">R</div>
-                            <div>
-                                <p class="font-semibold text-gray-900">농구왕 리더 (ID: leader123)</p>
-                                <p class="text-sm text-gray-500">모임 생성자</p>
-                            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">최근 활동/일정</h3>
+                <ul id="detail-activities" class="space-y-3">
+                    {% for activity in club.activities %}
+                    <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center 
+                        {% if activity.status == '마감' %}bg-red-50 border border-red-200{% endif %}">
+                        <div>
+                            <p class="font-semibold text-gray-800">{{ activity.title }}</p>
+                            <p class="text-sm text-gray-500">📍 {{ activity.date }} | 💰 회비 {{ activity.fee }}</p>
                         </div>
-                        
-                        <h3 class="text-xl font-bold text-gray-800 mt-4 mb-3">모임 가입</h3>
-                        <p class="text-sm text-gray-600 mb-4">
-                            가입 신청서를 작성해주시면, 리더의 승인 후 정식 멤버로 활동할 수 있습니다.
-                        </p>
-                        <button onclick="document.getElementById('apply-modal').classList.remove('hidden')"
-                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.01]">
-                            🤝 가입 신청하기 (FR2.3)
-                        </button>
-                    </div>
-                </div>
+                        <span class="text-sm font-medium 
+                            {% if activity.status == '참석' %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if activity.status == '참석' %}
+                                참석 {{ activity.attendees }}명
+                            {% else %}
+                                {{ activity.status }}
+                            {% endif %}
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="p-3 text-gray-500">등록된 예정 활동이 없습니다.</li>
+                    {% endfor %}
+                    
+                </ul>
             </div>
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-md sticky top-20">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-4">모임 리더</h3>
+                    <div class="flex items-center space-x-3 border-b pb-4 mb-4">
+                        <div class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-bold">R</div>
+                        <div>
+                            <p class="font-semibold text-gray-900">{{ club.leader_nickname }} (ID: {{ club.leader_id }})</p>
+                            <p class="text-sm text-gray-500">모임 생성자</p>
+                        </div>
+                    </div>
+                            
+                    <h3 class="text-xl font-bold text-gray-800 mt-4 mb-3">모임 가입</h3>
+                    <p class="text-sm text-gray-600 mb-4">
+                        가입 신청서를 작성해주시면, 리더의 승인 후 정식 멤버로 활동할 수 있습니다.
+                    </p>
+                    <button onclick="document.getElementById('apply-modal').classList.remove('hidden')"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.01]">
+                        🤝 가입 신청하기
+                    </button>
+                </div>
+            </div> 
+            {% endif %}
+
         </section>
 
+
+
         <div id="apply-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 transition-opacity"
-             onclick="if(event.target.id === 'apply-modal') document.getElementById('apply-modal').classList.add('hidden')">
-            
-            <div class="bg-white rounded-xl p-8 max-w-lg w-full m-4 shadow-2xl transform transition-transform duration-300 scale-100">
-                <h3 class="text-2xl font-bold text-gray-900 border-b pb-3 mb-5">모임 가입 신청</h3>
+            onclick="if(event.target.id === 'apply-modal') document.getElementById('apply-modal').classList.add('hidden')">
                 
+            <div class="bg-white rounded-xl p-8 max-w-lg w-full m-4 shadow-2xl transform transition-transform duration-300 scale-100">
+                <h3 class="text-2xl font-bold text-gray-900 border-b pb-3 mb-5">모임 가입 신청</h3>            
                 <form onsubmit="handleApply(event)">
                     <div class="space-y-4">
                         <div>
@@ -128,65 +138,44 @@
                         </button>
                     </div>
                 </form>
-
                 <div id="modal-message" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
             </div>
         </div>
-
     </main>
-    
+        
     {% include 'components/footer.html' %}
 
     <script>
-        // 모임 상세 페이지 데이터 업데이트 (URL 쿼리 파라미터를 사용하여 목업 데이터 로드)
         function loadGroupDetail() {
             const pathSegments = window.location.pathname.split('/').filter(Boolean);
             const clubId = pathSegments[pathSegments.length - 1];
-
-            // MVP 목표: 실제 DB 연결 전까지는 목업 데이터 사용
-            const mockData = {
-                1: {
-                    name: "주말 농구 팀 '슬램덩커스'", category: "체육 🏀", region: "서울/경기", members: 12,
-                    description: "저희 슬램덩커스는 실력에 상관없이 농구를 사랑하는 모든 분들을 환영합니다. 매주 토요일 정기 모임을 통해 친목을 다지고 건강한 땀을 흘리고 있습니다. 단순한 운동을 넘어, 팀워크와 열정과 함께 나누는 모임이 되겠습니다."
-                },
-                2: {
-                    name: "퇴근 후 힐링 드로잉", category: "미술/공예 🎨", region: "강남구", members: 8,
-                    description: "매주 수요일 저녁, 따뜻한 카페에서 함께 그림을 그리며 하루를 마무리해요. 오일 파스텔, 색연필 등 다양한 재료를 시도해 볼 수 있습니다. 장비가 없어도 괜찮아요. 함께 힐링하실 분들을 기다립니다."
-                }
-            };
             
             const club = mockData[clubId];
             if (club) {
-                document.title = `HobbyFlow - ${club.name}`;
+                document.title = `Wiki - ${club.name}`;
                 document.getElementById('detail-name').textContent = club.name;
                 document.getElementById('detail-category').textContent = club.category;
                 document.getElementById('detail-region').textContent = `활동 지역: ${club.region}`;
                 document.getElementById('detail-member-count').textContent = `현재 멤버: ${club.members}명`;
                 document.getElementById('detail-description').textContent = club.description;
             } else {
-                // 모임 ID가 없을 경우 리스트 페이지로 리다이렉트
                 document.getElementById('detail-name').textContent = "모임을 찾을 수 없습니다.";
                 document.getElementById('detail-category').textContent = "오류";
                 document.getElementById('detail-description').textContent = "잘못된 모임 정보입니다.";
             }
         }
 
-        // 가입 신청 처리 (FR2.3)
+        // 가입 신청 처리
         function handleApply(event) {
-            event.preventDefault(); // 기본 폼 제출 방지
-
+            event.preventDefault(); 
             const name = document.getElementById('applicant-name').value;
             const message = document.getElementById('applicant-message').value;
             const messageBox = document.getElementById('modal-message');
-            
-            // 실제 Django 뷰로 데이터 전송하는 fetch 로직이 필요합니다.
-            // 현재는 성공 메시지를 보여줍니다.
             
             messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800');
             messageBox.classList.add('bg-green-100', 'text-green-800');
             messageBox.textContent = `✅ '${name}'님의 가입 신청이 모임 리더에게 전달되었습니다. 승인까지 잠시 기다려주세요.`;
 
-            // 폼 초기화 및 3초 후 모달 닫기
             event.target.reset();
             setTimeout(() => {
                 document.getElementById('apply-modal').classList.add('hidden');
@@ -194,7 +183,6 @@
             }, 3000); 
         }
 
-        // 페이지 로드 시 초기 상태 설정
         document.addEventListener('DOMContentLoaded', () => {
             loadGroupDetail();
         });

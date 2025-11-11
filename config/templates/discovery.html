@@ -62,7 +62,7 @@
 
             <div id="club-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {% for club in clubs %}
-                    {% include "club_card.html" with club=club %}
+                    {% include "components/club_card.html" with club=club %}
                 {% empty %}
                     <div class="text-center text-gray-500 py-10 col-span-full">
                         <p class="text-lg text-gray-500">등록된 모임이 없습니다.</p>
