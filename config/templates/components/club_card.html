@@ -1,0 +1,14 @@
+<a href="{% url 'Wiki:group_detail' group_id=club.id %}" 
+    class="club-card bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer block">
+    <div class="p-6">
+        <span class="text-xs font-semibold px-3 py-1 {{ club.badge_class }} rounded-full">
+            {{ club.category }}
+        </span>
+        <h3 class="mt-2 text-xl font-bold text-gray-900 truncate">{{ club.title }}</h3>
+        <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ club.description }}</p>
+        <div class="mt-4 flex items-center text-sm text-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 mr-1"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h10l-1.5 6H5.5L4 8z"></path><path d="M7 15a1 1 0 0 0-1 1v1"></path><path d="M17 15a1 1 0 0 0-1 1v1"></path></svg>
+            <span>{{ club.region }} | 멤버 {{ club.members }}명</span>
+        </div>
+    </div>
+</a>

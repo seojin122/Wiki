@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki - 취미 동호회 운영 자동화</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Inter Font 적용 및 기본 스타일 설정 */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        /* 커스텀 스크롤바 (선택 사항) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e2e8f0;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased">
+
+    {% include 'components/header.html' %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <section id="discovery-page" class="space-y-8">
+            <h2 class="text-3xl font-extrabold text-gray-900 mb-4">다양한 취미 동호회를 찾아보세요!</h2>
+            
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input type="text" placeholder="모임 이름, 활동 내용 검색" class="col-span-1 md:col-span-2 p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    
+                    <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">카테고리 전체</option>
+                        <option value="sports">체육 🏀</option>
+                        <option value="art">미술/공예 🎨</option>
+                        <option value="music">음악/악기 🎵</option>
+                        <option value="cooking">요리/베이커리 🍳</option>
+                        <option value="book">독서 📚</option>
+                    </select>
+                    
+                    <select class="p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">활동 지역</option>
+                        <option value="seoul">서울</option>
+                        <option value="gyeonggi">경기</option>
+                        </select>
+                </div>
+                <button class="mt-4 w-full md:w-auto bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-200">
+                    🔍 모임 검색
+                </button>
+            </div>
+
+            <div id="club-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {% for club in clubs %}
+                    {% include "components/club_card.html" with club=club %}
+                {% empty %}
+                    <div class="text-center text-gray-500 py-10 col-span-full">
+                        <p class="text-lg text-gray-500">등록된 모임이 없습니다.</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div id="no-results" class="hidden text-center py-10">
+                <p class="text-lg text-gray-500">검색 결과가 없습니다. 다른 조건으로 찾아보세요.</p>
+            </div>
+        </section>
+
+    </main>
+    
+    {% include 'components/footer.html' %}
+
+    <script>
+        // 이 페이지에서는 showPage 함수를 사용할 필요가 없습니다.
+        // 모임 상세 페이지 이동은 하이퍼링크로 처리합니다.
+    </script>
+</body>
+</html>

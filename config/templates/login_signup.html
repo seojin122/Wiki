@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki - 로그인/회원가입</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased flex flex-col">
+
+    {% include 'components/header.html' %}
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden">
+            <div class="flex border-b border-gray-200">
+                <button id="login-tab" 
+                        onclick="showTab('login')" 
+                        class="flex-1 py-4 text-center font-semibold transition duration-200 
+                               text-white bg-blue-600 border-r border-blue-700">
+                    로그인
+                </button>
+                <button id="signup-tab" 
+                        onclick="showTab('signup')" 
+                        class="flex-1 py-4 text-center font-semibold transition duration-200 
+                               text-gray-600 hover:bg-gray-50">
+                    회원가입
+                </button>
+            </div>
+
+            <div class="p-8">
+                <form id="login-form" class="space-y-6">
+                    <div>
+                        <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
+                        <input type="email" id="login-email" required placeholder="example@hobbyflow.com"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                        <input type="password" id="login-password" required placeholder="6자 이상"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <button type="submit"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-200">
+                        로그인
+                    </button>
+                    
+                    <div class="text-center text-sm">
+                        <a href="#" class="text-blue-600 hover:text-blue-700 font-medium">비밀번호 찾기</a>
+                    </div>
+
+                    <div class="relative flex items-center py-4">
+                        <div class="flex-grow border-t border-gray-300"></div>
+                        <span class="flex-shrink mx-4 text-gray-500 text-sm">또는</span>
+                        <div class="flex-grow border-t border-gray-300"></div>
+                    </div>
+
+                    <button type="button" class="w-full flex items-center justify-center p-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-150">
+                        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/google/google-original.svg" alt="Google logo" class="w-5 h-5 mr-3"/>
+                        Google로 로그인
+                    </button>
+                </form>
+
+                <form id="signup-form" class="space-y-6 hidden">
+                    <div>
+                        <label for="signup-email" class="block text-sm font-medium text-gray-700 mb-1">이메일 (ID)</label>
+                        <input type="email" id="signup-email" required placeholder="example@hobbyflow.com"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="signup-password" class="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
+                        <input type="password" id="signup-password" required placeholder="6자 이상"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="signup-nickname" class="block text-sm font-medium text-gray-700 mb-1">닉네임</label>
+                        <input type="text" id="signup-nickname" required placeholder="활동할 닉네임을 입력하세요"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    
+                    <div class="flex items-start">
+                        <input id="terms-checkbox" type="checkbox" required class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1">
+                        <label for="terms-checkbox" class="ml-2 text-sm text-gray-600">
+                            <a href="#" class="text-blue-600 hover:underline">이용약관</a> 및 
+                            <a href="#" class="text-blue-600 hover:underline">개인정보처리방침</a>에 동의합니다. (필수)
+                        </label>
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-200">
+                        회원가입 완료
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+    
+    {% include 'components/footer.html' %}
+
+    <script>
+        // 탭 전환 함수
+        function showTab(tabName) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const loginTab = document.getElementById('login-tab');
+            const signupTab = document.getElementById('signup-tab');
+
+            if (tabName === 'login') {
+                // 폼 전환
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                // 탭 스타일 변경
+                loginTab.classList.add('text-white', 'bg-blue-600');
+                loginTab.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                signupTab.classList.add('text-gray-600', 'hover:bg-gray-50');
+                signupTab.classList.remove('text-white', 'bg-blue-600');
+            } else if (tabName === 'signup') {
+                // 폼 전환
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                // 탭 스타일 변경
+                signupTab.classList.add('text-white', 'bg-blue-600');
+                signupTab.classList.remove('text-gray-600', 'hover:bg-gray-50');
+                loginTab.classList.add('text-gray-600', 'hover:bg-gray-50');
+                loginTab.classList.remove('text-white', 'bg-blue-600');
+            }
+        }
+
+        // 폼 제출 이벤트 처리 (실제 API 호출이 필요함)
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert("로그인 시도! (실제 로직 필요)");
+        });
+
+        document.getElementById('signup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert("회원가입 시도! (실제 로직 필요)");
+        });
+
+        // 페이지 로드 시 초기 탭 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            showTab('login');
+        });
+    </script>
+</body>
+</html>
