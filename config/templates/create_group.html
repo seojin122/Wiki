@@ -97,20 +97,15 @@
         document.getElementById('create-group-form').addEventListener('submit', function(event) {
             event.preventDefault();
             
-            // 폼 데이터 수집 (예시)
             const groupName = document.getElementById('group-name').value;
             
-            // 메시지 표시
             const messageBox = document.getElementById('creation-message');
             messageBox.textContent = `🎉 모임 '${groupName}'이 성공적으로 개설되었습니다!`;
             messageBox.classList.remove('hidden');
 
-            // 폼 초기화 및 메시지 숨기기 (3초 후)
             setTimeout(() => {
                 document.getElementById('create-group-form').reset();
                 messageBox.classList.add('hidden');
-                // 실제 구현에서는 모임 상세 페이지로 이동
-                // window.location.href = '/group/' + newGroupId;
             }, 3000); 
         });
     </script>
