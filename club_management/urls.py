@@ -8,5 +8,6 @@ urlpatterns = [
     path('group/<int:group_id>/', views.group_detail_page, name='group_detail'),
     path('auth/', views.LoginView.as_view(), name='login_page'),
     path('my/', views.my_page_view, name='my_page'),
+    path('my/edit/', views.profile_edit_view, name='profile_edit'),
     path('create/', views.create_group_view, name='create_group'),
 ]
