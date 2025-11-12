@@ -42,6 +42,11 @@ def my_page_view(request):
     # 실제 구현 시, 로그인된 사용자의 데이터를 context로 전달해야 합니다.
     return render(request, 'mypage.html')
 
+def create_group_view(request):
+    """마이페이지를 렌더링합니다."""
+    # 실제 구현 시, 로그인된 사용자의 데이터를 context로 전달해야 합니다.
+    return render(request, 'create_group.html')
+
 
 class AuthView(View):
     template_name = 'login_signup.html'

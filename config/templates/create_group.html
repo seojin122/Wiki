@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiki - 모임 생성</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+    </style>
+</head>
+<body class="min-h-screen antialiased flex flex-col">
+
+    {% include 'components/header.html' %}
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow">
+        
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-6">✨ 새로운 모임 만들기</h2>
+        <p class="text-lg text-gray-600 mb-8">취미를 공유하고 싶은 사람들과 함께할 새로운 모임을 개설해보세요.</p>
+        
+        <div class="bg-white p-8 rounded-xl shadow-2xl border-t-4 border-blue-500">
+            <form id="create-group-form" class="space-y-6">
+                
+                <div class="space-y-4">
+                    <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 기본 정보</h3>
+                    
+                    <div>
+                        <label for="group-name" class="block text-sm font-medium text-gray-700 mb-1">모임 이름 <span class="text-red-500">*</span></label>
+                        <input type="text" id="group-name" required placeholder="예: 주말 러닝 크루 '같이 뛰어요'"
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="group-category" class="block text-sm font-medium text-gray-700 mb-1">카테고리 <span class="text-red-500">*</span></label>
+                            <select id="group-category" required
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>선택하세요</option>
+                                <option value="sports">체육 🏀</option>
+                                <option value="art">미술/공예 🎨</option>
+                                <option value="music">음악/악기 🎵</option>
+                                <option value="cooking">요리/베이커리 🍳</option>
+                                <option value="book">독서 📚</option>
+                                <option value="etc">기타</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="group-region" class="block text-sm font-medium text-gray-700 mb-1">주요 활동 지역 <span class="text-red-500">*</span></label>
+                            <select id="group-region" required
+                                class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="" disabled selected>선택하세요</option>
+                                <option value="seoul">서울</option>
+                                <option value="gyeonggi">경기</option>
+                                <option value="etc">기타/온라인</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="group-description" class="block text-sm font-medium text-gray-700 mb-1">모임 소개 (200자 내외) <span class="text-red-500">*</span></label>
+                        <textarea id="group-description" rows="5" required maxlength="200" placeholder="모임의 특징, 활동 내용, 목표 등을 자세히 소개해주세요."
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+
+                </div>
+                
+                <div class="space-y-4 pt-6 border-t border-gray-200">
+                    <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 리더 정보</h3>
+                    <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <p class="font-semibold text-gray-800">리더 닉네임: HobbyMaster</p>
+                        <p class="text-sm text-gray-600">리더 ID/이메일: hobbymaster@flow.com</p>
+                        <p class="text-xs text-blue-600 mt-1">이 정보는 가입 시 마이페이지 프로필 정보를 기반으로 자동 입력됩니다.</p>
+                    </div>
+                </div>
+
+                <div class="pt-6">
+                    <button type="submit"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.005]">
+                        🚀 모임 생성 완료하기
+                    </button>
+                </div>
+            </form>
+            <div id="creation-message" class="hidden mt-6 p-4 rounded-lg text-center font-medium bg-green-100 text-green-800"></div>
+        </div>
+
+    </main>
+        
+    {% include 'components/footer.html' %}
+
+    <script>
+        document.getElementById('create-group-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            // 폼 데이터 수집 (예시)
+            const groupName = document.getElementById('group-name').value;
+            
+            // 메시지 표시
+            const messageBox = document.getElementById('creation-message');
+            messageBox.textContent = `🎉 모임 '${groupName}'이 성공적으로 개설되었습니다!`;
+            messageBox.classList.remove('hidden');
+
+            // 폼 초기화 및 메시지 숨기기 (3초 후)
+            setTimeout(() => {
+                document.getElementById('create-group-form').reset();
+                messageBox.classList.add('hidden');
+                // 실제 구현에서는 모임 상세 페이지로 이동
+                // window.location.href = '/group/' + newGroupId;
+            }, 3000); 
+        });
+    </script>
+</body>
+</html>
