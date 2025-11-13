@@ -13,6 +13,9 @@
             font-family: 'Inter', sans-serif;
             background-color: #f7f9fb;
         }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-button.active { border-bottom: 4px solid; border-color: #2563EB; color: #2563EB; font-weight: 600; }
     </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -28,9 +31,29 @@
             <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
                 {% if club %}
                     <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full"> {{ club.category }}</span>
-                    <h2 id="detail-name" class="mt-3 text-4xl font-extrabold text-gray-900">{{ club.name }}</h2>
+                    <div class="flex justify-between items-start mt-3">
+                        <h2 id="detail-name" class="text-4xl font-extrabold text-gray-900">{{ club.name }}</h2>
+                        {% if is_member %}
+                            <p class="text-base text-green-600 font-semibold mt-4">✅ 당신은 이 모임의 정식 멤버입니다.</p>
+                            <button onclick="document.getElementById('leave-modal').classList.remove('hidden')" 
+                                class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200 text-sm">
+                                🚪 모임 탈퇴
+                            </button>
+                        {% elif not is_leader %}
+                            <button onclick="document.getElementById('apply-modal').classList.remove('hidden')"
+                                class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-200 text-sm">
+                                🤝 가입 신청
+                            </button>
+                        {% endif %}
+                    </div>
+
                     <p id="detail-region" class="text-lg text-gray-600 mt-2">활동 지역: {{ club.region }}</p>
                     <p id="detail-member-count" class="text-base text-gray-500 mt-1">현재 멤버: {{ club.members }}명</p>
+                    
+                    <div class="mt-4 p-3 bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 rounded-md">
+                        <p class="font-semibold">📢 최신 공지:</p>
+                        <p class="text-sm">11월 셋째 주 정기 모임 장소 변경 (게시판 확인)</p>
+                    </div>
                 {% else %}
                     <span class="text-sm font-semibold px-3 py-1 bg-red-100 text-red-600 rounded-full">오류</span>
                     <h2 class="mt-3 text-4xl font-extrabold text-gray-900">모임을 찾을 수 없습니다.</h2>
@@ -38,67 +61,16 @@
                 {% endif %}
             </div>
             
-            {% if club %}
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 space-y-6">
-                    <div class="bg-white p-6 rounded-xl shadow-md">
-                        <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">모임 소개</h3>
-                        <p id="detail-description" class="text-gray-700 leading-relaxed">
-                            {{ club.description }}
-                        </p>
-                    </div>                
-                </div>
-            <div class="bg-white p-6 rounded-xl shadow-md">
-                <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">최근 활동/일정</h3>
-                <ul id="detail-activities" class="space-y-3">
-                    {% for activity in club.activities %}
-                    <li class="p-3 bg-gray-50 rounded-lg flex justify-between items-center 
-                        {% if activity.status == '마감' %}bg-red-50 border border-red-200{% endif %}">
-                        <div>
-                            <p class="font-semibold text-gray-800">{{ activity.title }}</p>
-                            <p class="text-sm text-gray-500">📍 {{ activity.date }} | 💰 회비 {{ activity.fee }}</p>
-                        </div>
-                        <span class="text-sm font-medium 
-                            {% if activity.status == '참석' %}text-green-600{% else %}text-red-600{% endif %}">
-                            {% if activity.status == '참석' %}
-                                참석 {{ activity.attendees }}명
-                            {% else %}
-                                {{ activity.status }}
-                            {% endif %}
-                        </span>
-                    </li>
-                    {% empty %}
-                    <li class="p-3 text-gray-500">등록된 예정 활동이 없습니다.</li>
-                    {% endfor %}
-                    
-                </ul>
-            </div>
-            <div class="lg:col-span-1 space-y-6">
-                <div class="bg-white p-6 rounded-xl shadow-md sticky top-20">
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4">모임 리더</h3>
-                    <div class="flex items-center space-x-3 border-b pb-4 mb-4">
-                        <div class="w-10 h-10 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-bold">R</div>
-                        <div>
-                            <p class="font-semibold text-gray-900">{{ club.leader_nickname }} (ID: {{ club.leader_id }})</p>
-                            <p class="text-sm text-gray-500">모임 생성자</p>
-                        </div>
-                    </div>
-                            
-                    <h3 class="text-xl font-bold text-gray-800 mt-4 mb-3">모임 가입</h3>
-                    <p class="text-sm text-gray-600 mb-4">
-                        가입 신청서를 작성해주시면, 리더의 승인 후 정식 멤버로 활동할 수 있습니다.
-                    </p>
-                    <button onclick="document.getElementById('apply-modal').classList.remove('hidden')"
-                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.01]">
-                        🤝 가입 신청하기
-                    </button>
-                </div>
-            </div> 
-            {% endif %}
+            {% include './components/club_detail_tabs.html' %}
 
         </section>
 
-
+        {% if is_member %}
+        <button class="fixed bottom-8 right-8 bg-pink-600 hover:bg-pink-700 text-white p-4 rounded-full shadow-2xl transition duration-200"
+            onclick="window.location.href='/club/{{ club.id }}/chat'">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        </button>
+        {% endif %}
 
         <div id="apply-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 transition-opacity"
             onclick="if(event.target.id === 'apply-modal') document.getElementById('apply-modal').classList.add('hidden')">
@@ -107,6 +79,9 @@
                 <h3 class="text-2xl font-bold text-gray-900 border-b pb-3 mb-5">모임 가입 신청</h3>            
                 <form onsubmit="handleApply(event)">
                     <div class="space-y-4">
+                        <p class="text-sm text-gray-600 mb-4">
+                            가입 신청서를 작성해주시면, 리더의 승인 후 정식 멤버로 활동할 수 있습니다.
+                        </p>
                         <div>
                             <label for="applicant-name" class="block text-sm font-medium text-gray-700 mb-1">신청자 닉네임</label>
                             <input type="text" id="applicant-name" required placeholder="예: 농구하는 병아리"
@@ -141,12 +116,35 @@
                 <div id="modal-message" class="hidden mt-4 p-3 rounded-lg text-sm"></div>
             </div>
         </div>
+        <div id="leave-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 transition-opacity"
+            onclick="if(event.target.id === 'leave-modal') document.getElementById('leave-modal').classList.add('hidden')">
+            <div class="bg-white rounded-xl p-8 max-w-sm w-full m-4 shadow-2xl transform transition-transform duration-300 scale-100">
+                <h3 class="text-2xl font-bold text-red-700 border-b pb-3 mb-5">🚨 모임 탈퇴 확인</h3>            
+                <p class="text-gray-700 mb-6">
+                    정말 '{{ club.name }}' 모임에서 탈퇴하시겠습니까?<br>
+                    탈퇴 시 다시 가입 신청을 해야 합니다.
+                </p>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('leave-modal').classList.add('hidden')"
+                        class="px-5 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-100 transition duration-150">
+                        취소
+                    </button>
+                    <button type="button" onclick="handleLeaveClub()"
+                        class="px-5 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150">
+                        예, 탈퇴합니다
+                    </button>
+                </div>
+                <div id="leave-message" class="hidden mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800"></div>
+            </div>
+        </div>
     </main>
         
     {% include 'components/footer.html' %}
 
     <script>
         function loadGroupDetail() {
+            const is_member = true; 
+            const is_leader = false; 
             const pathSegments = window.location.pathname.split('/').filter(Boolean);
             const clubId = pathSegments[pathSegments.length - 1];
             
@@ -185,6 +183,24 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             loadGroupDetail();
+        });
+
+        // 버튼 클릭
+        function setupTabs() {
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = `tab-${button.getAttribute('data-tab')}`; 
+                    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(targetId).classList.add('active');
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... loadGroupDetail() 등 기존 로직 ...
+            setupTabs(); // 탭 기능 활성화
         });
     </script>
 </body>
