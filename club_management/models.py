@@ -3,9 +3,6 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
-
-
-# 관리자
 from django.contrib.auth.models import BaseUserManager
 
 class CustomUserManager(BaseUserManager):
@@ -144,7 +141,7 @@ class RSVP(models.Model):
 
 
 
-# FINANCIAL_TRANSACTION)
+# 재정 기록
 class FinancialTransaction(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='transactions')
     user = models.ForeignKey( User, on_delete=models.SET_NULL,  null=True,  blank=True,related_name='financial_records',  verbose_name='관련 사용자 (납부자/지출 처리자)')
