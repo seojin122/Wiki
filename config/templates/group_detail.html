@@ -33,22 +33,27 @@
                     <span id="detail-category" class="text-sm font-semibold px-3 py-1 bg-blue-100 text-blue-600 rounded-full"> {{ club.category }}</span>
                     <div class="flex justify-between items-start mt-3">
                         <h2 id="detail-name" class="text-4xl font-extrabold text-gray-900">{{ club.name }}</h2>
-                        {% if is_member %}
+                        {% if is_member and not is_leader %}
                             <p class="text-base text-green-600 font-semibold mt-4">✅ 당신은 이 모임의 정식 멤버입니다.</p>
                             <button onclick="document.getElementById('leave-modal').classList.remove('hidden')" 
                                 class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow transition duration-200 text-sm">
                                 🚪 모임 탈퇴
                             </button>
-                        {% else %}
-                            {% if club and not is_member and not is_leader %}
-                                <form method="post" action="{% url 'Wiki:group_join' group_id=club.id %}">
-                                    {% csrf_token %}
-                                    <button type="submit"
-                                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition duration-200 text-sm">
-                                        🤝 가입 신청
-                                    </button>
-                                </form>
-                            {% endif %}
+                        {% elif not is_member and not is_leader %}
+                            <button onclick="document.getElementById('apply-modal').classList.remove('hidden')"
+                                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">
+                                🤝 가입 신청
+                            </button>
+                        {% endif %}
+                        {% if is_leader %}
+                            <form action="{% url 'Wiki:group_delete' club.id %}" method="post"
+                                onsubmit="return confirm('정말 이 모임을 삭제할까요? 되돌릴 수 없습니다.');">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="bg-red-700 hover:bg-red-800 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm">
+                                    ❌ 모임 삭제
+                                </button>
+                            </form>
                         {% endif %}
                     </div>
 

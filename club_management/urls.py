@@ -12,6 +12,7 @@ urlpatterns = [
     path('group/<int:group_id>/schedule/new/', views.schedule_create, name='schedule_create'),
     path('group/<int:group_id>/board/new/', views.board_post_create, name='board_post_create'),
     path('group/<int:group_id>/finance/new/', views.finance_create, name='finance_create'),
+    path('group/<int:group_id>/delete/', views.delete_group_view, name='group_delete'),
 
     path('auth/', views.AuthView.as_view(), name='auth'),
     path('logout/', views.user_logout, name='logout'),

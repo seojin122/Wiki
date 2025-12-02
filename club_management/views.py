@@ -427,6 +427,25 @@ def finance_create(request, group_id):
 
     return render(request, "finance_form.html", {"group": group})
 
+@login_required(login_url='/auth/')
+def delete_group_view(request, group_id):
+    group = get_object_or_404(Group, pk=group_id)
+
+    if request.user != group.leader:
+        messages.error(request, '모임 삭제는 리더만 할 수 있습니다.')
+        return redirect('group_detail', group_id=group_id)
+
+    if request.method == 'POST':
+        group.delete()
+        messages.success(request, '모임이 삭제되었습니다.')
+        return redirect('Wiki:discovery')  
+        
+    return redirect('group_detail', group_id=group_id)
+
+
+
+
+
 
 
 
