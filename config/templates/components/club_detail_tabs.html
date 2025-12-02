@@ -78,7 +78,7 @@
                         <h4 class="text-xl font-semibold text-gray-700">전체 글</h4>
                         {% if is_member %}
                             <a href="{% url 'Wiki:board_post_create' group_id=club.id %}"
-                            class="inline-block bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium">
+                            class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium inline-block">
                                 ✏️ 새 글 작성
                             </a>
                         {% endif %}
@@ -177,6 +177,7 @@
                 <div id="tab-moneys" class="tab-content" style="padding: 1.5rem;">
                     <h3 class="text-2xl font-bold text-gray-800 border-b pb-2 mb-4">재정 현황</h3>
 
+                    <!-- 현재 잔액 요약 -->
                     <div>
                         <h4 class="text-xl font-semibold text-gray-700 mb-3">현재 잔액</h4>
                         <div class="p-4 bg-green-50 rounded-lg border border-green-200 flex justify-between items-center">
@@ -184,10 +185,9 @@
                                 💰 {{ club.finance.current_balance|default:0|intcomma }} 원
                             </p>
                             {% if is_leader or is_treasurer %}
-                                <a href="{% url 'Wiki:finance_create' group_id=club.id %}"
-                                class="inline-block bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium">
-                                    재정 기록 추가
-                                </a>
+                                <button class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg text-sm font-medium">
+                                    재정 기록 관리
+                                </button>
                             {% endif %}
                         </div>
                         <p class="text-xs text-gray-500 mt-1">
@@ -195,32 +195,32 @@
                         </p>
                     </div>
 
+                    <!-- 전체 재정 내역 리스트 -->
                     <div class="mt-6">
-                        <h4 class="text-xl font-semibold text-gray-700 mb-3">회비 납부 현황 (11월)</h4>
+                        <h4 class="text-xl font-semibold text-gray-700 mb-3">재정 내역 (전체)</h4>
                         <ul class="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {% for status in club.finance.dues_status %}
-                                <li class="flex justify-between items-center p-2 rounded-lg
-                                    {% if status.status == '미납' %}bg-red-100 border-l-4 border-red-500{% else %}bg-gray-50{% endif %}">
-                                    <p class="font-medium text-gray-900">{{ status.nickname }}</p>
-                                    <div class="flex items-center space-x-2">
-                                        <span class="text-sm font-semibold
-                                            {% if status.status == '미납' %}text-red-700{% else %}text-green-700{% endif %}">
-                                            {{ status.status }}
-                                        </span>
-                                        {% if status.status == '미납' %}
-                                            <span class="text-sm text-red-500">
-                                                ({{ status.amount|intcomma }}원)
-                                            </span>
-                                        {% endif %}
+                            {% for tx in club.finance.transactions %}
+                                <li class="flex justify-between items-center p-2 rounded-lg bg-gray-50">
+                                    <div>
+                                        <p class="font-medium text-gray-900">
+                                            {{ tx.description }}
+                                        </p>
+                                        <p class="text-xs text-gray-500 mt-1">
+                                            {{ tx.date }} · {{ tx.user_nickname }}
+                                        </p>
                                     </div>
+                                    <p class="text-sm font-semibold text-gray-800">
+                                        {{ tx.amount|intcomma }}원
+                                    </p>
                                 </li>
                             {% empty %}
-                                <li class="p-3 text-gray-500">회비 정보가 없습니다.</li>
+                                <li class="p-3 text-gray-500">
+                                    아직 등록된 재정 내역이 없습니다.
+                                </li>
                             {% endfor %}
                         </ul>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>

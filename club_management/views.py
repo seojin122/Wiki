@@ -80,107 +80,156 @@ def discovery_page(request):
 
     return render(request, "discovery.html", context)
 
-def group_detail_page(request, group_id: int):
-    """모임 상세 페이지: DB 기반으로 모임/멤버/일정/재정 정보 조회"""
-    group = get_object_or_404(Group, pk=group_id)
-    user = request.user if request.user.is_authenticated else None
-    member_qs = GroupMember.objects.filter(group=group).select_related("user")
-    is_leader = bool(user and group.leader_id == user.id)
-    membership = member_qs.filter(user=user).first() if user else None
-    is_member = bool(
-        membership
-        and membership.member_role
-        in [
-            GroupMember.MemberRole.LEADER,
-            GroupMember.MemberRole.ADMIN,
-            GroupMember.MemberRole.MEMBER,
-        ]
-    )
-    is_treasurer = bool(
-        membership and membership.member_role == GroupMember.MemberRole.ADMIN
+def group_detail_page(request, group_id):
+    # 모임 객체 + 멤버 수 함께 가져오기
+    group = get_object_or_404(
+        Group.objects.annotate(member_count=Count("groupmember")),
+        pk=group_id,
     )
 
-    active_members = member_qs.exclude(member_role=GroupMember.MemberRole.PENDING)
-    member_count = active_members.count()
+    # 리더 정보
+    if group.leader:
+        leader_nickname = group.leader.nickname
+        leader_id = group.leader.email
+    else:
+        leader_nickname = "리더 미지정"
+        leader_id = "-"
 
-    # 가입 대기중 멤버(리더만 볼 수 있음)
-    pending_members = (
-        member_qs.filter(member_role=GroupMember.MemberRole.PENDING)
-        if is_leader
-        else GroupMember.objects.none()
-    )
-
-    # 일정/재정
-    schedules = (
-        ActivitySchedule.objects.filter(group=group)
-        .select_related("creator")
-        .order_by("date_time")
-    )
-    transactions = (
-        FinancialTransaction.objects.filter(group=group)
+    # 멤버 상세 정보
+    group_members = (
+        GroupMember.objects.filter(group=group)
         .select_related("user")
-        .order_by("-transaction_date")
+        .order_by("joined_date")
     )
 
-    club = {
+    members_detail = []
+    for gm in group_members:
+        if gm.member_role == GroupMember.MemberRole.LEADER:
+            role = "리더"
+        elif gm.member_role == GroupMember.MemberRole.ADMIN:
+            role = "총무"
+        elif gm.member_role == GroupMember.MemberRole.MEMBER:
+            role = "일반 멤버"
+        elif gm.member_role == GroupMember.MemberRole.PENDING:
+            role = "가입 대기 중"
+        else:
+            role = gm.get_member_role_display()
+
+        members_detail.append(
+            {
+                "nickname": gm.user.nickname if gm.user else "(탈퇴 회원)",
+                "role": role,
+            }
+        )
+
+    # 일정 / 출석
+    schedules = ActivitySchedule.objects.filter(group=group).order_by("date_time")
+    activities = []
+    for s in schedules:
+        activities.append(
+            {
+                "title": s.title,
+                "date": s.date_time.strftime("%m월 %d일 %H:%M"),
+                "fee": f"{s.participation_fee:,}원",
+                "status": "예정",
+                "attendees": RSVP.objects.filter(
+                    schedule=s,
+                    attendance_status=RSVP.AttendanceStatus.ATTENDING,
+                ).count(),
+            }
+        )
+
+    # 게시판 글 목록
+    board_posts = []
+    try:
+        from .models import BoardPost
+
+        posts_qs = (
+            BoardPost.objects.filter(group=group)
+            .select_related("author")
+            .order_by("-is_notice", "-created_at")
+        )
+        for post in posts_qs:
+            board_posts.append(
+                {
+                    "title": post.title,
+                    "author": post.author.nickname if post.author else "(탈퇴 회원)",
+                    "date": post.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "views": post.views,
+                    "type": "공지" if getattr(post, "is_notice", False) else "일반",
+                }
+            )
+    except Exception:
+        board_posts = []
+
+    # 재정 요약 + 내역 전체
+    transactions_qs = FinancialTransaction.objects.filter(group=group).order_by(
+        "-transaction_date"
+    )
+    balance = transactions_qs.aggregate(total=Sum("amount"))["total"] or 0
+    last_tx = transactions_qs.first()
+    last_updated = (
+        last_tx.transaction_date.strftime("%Y-%m-%d") if last_tx else "-"
+    )
+
+    transactions = []
+    for tx in transactions_qs:
+        transactions.append(
+            {
+                "date": tx.transaction_date.strftime("%Y-%m-%d"),
+                "amount": tx.amount,
+                "description": tx.description,
+                "user_nickname": tx.user.nickname if tx.user else "(시스템)",
+            }
+        )
+
+    finance = {
+        "current_balance": balance,
+        "last_updated": last_updated,
+        "dues_status": [],         
+        "transactions": transactions,  
+    }
+
+    is_member = False
+    is_leader = False
+    is_treasurer = False
+
+    if request.user.is_authenticated:
+        membership = (
+            GroupMember.objects.filter(group=group, user=request.user)
+            .only("member_role")
+            .first()
+        )
+        if membership:
+            if membership.member_role in [
+                GroupMember.MemberRole.MEMBER,
+                GroupMember.MemberRole.LEADER,
+                GroupMember.MemberRole.ADMIN,
+            ]:
+                is_member = True
+            if membership.member_role == GroupMember.MemberRole.LEADER:
+                is_leader = True
+            if membership.member_role == GroupMember.MemberRole.ADMIN:
+                is_treasurer = True
+
+    club_context = {
         "id": group.id,
         "name": group.name,
         "category": group.get_category_display(),
         "region": group.region,
-        "members": member_count,
-        "leader_nickname": group.leader.nickname if group.leader else "알 수 없음",
-        "leader_id": group.leader.email if group.leader else "",
+        "members": group.member_count,
         "description": group.description,
-        "activities": [
-            {
-                "id": s.id,
-                "title": s.title,
-                "date": s.date_time.strftime("%Y-%m-%d %H:%M"),
-                "fee": f"{s.participation_fee:,}원",
-                "status": "예정",
-                "attendees": RSVP.objects.filter(
-                    schedule=s, attendance_status=RSVP.AttendanceStatus.ATTENDING
-                ).count(),
-            }
-            for s in schedules
-        ],
-        # 게시판은 아직 DB 모델이 없으니 일단 빈 리스트
-        "board_posts": [],
-        # 재정 탭 - 간단 버전 (모든 금액을 더해서 현재 잔액처럼 표시)
-        "finance": {
-            "current_balance": sum(t.amount for t in transactions),
-            "last_updated": transactions[0].transaction_date if transactions else None,
-            "dues_status": [],  # 추후 회비 모델 만들면 채우기
-        },
-        # 멤버 탭
-        "members_detail": [
-            {
-                "id": m.id,
-                "nickname": m.user.nickname,
-                "role": {
-                    GroupMember.MemberRole.LEADER: "리더",
-                    GroupMember.MemberRole.ADMIN: "운영진",
-                    GroupMember.MemberRole.MEMBER: "일반 멤버",
-                    GroupMember.MemberRole.PENDING: "가입 대기 중",
-                }[m.member_role],
-            }
-            for m in active_members
-        ],
-        # 리더 전용: 가입 대기 멤버 목록
-        "pending_members": [
-            {
-                "id": m.id,
-                "nickname": m.user.nickname,
-                "joined_date": m.joined_date,
-            }
-            for m in pending_members
-        ],
+        "leader_nickname": leader_nickname,
+        "leader_id": leader_id,
+        "activities": activities,
+        "board_posts": board_posts,         
+        "members_detail": members_detail,
+        "finance": finance,                 
     }
 
     context = {
-        "club": club,
-        "group": group,
-        "is_member": bool(is_member or is_leader),
+        "club": club_context,
+        "is_member": is_member,
         "is_leader": is_leader,
         "is_treasurer": is_treasurer,
     }
