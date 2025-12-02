@@ -3,9 +3,6 @@ from django.contrib.auth.models import AbstractUser
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 
-
-
-# 관리자
 from django.contrib.auth.models import BaseUserManager
 
 class CustomUserManager(BaseUserManager):
@@ -35,18 +32,33 @@ class CustomUserManager(BaseUserManager):
 class User(AbstractUser):
 
     class RoleStatus(models.TextChoices):
-        # ERD의 role (ENUM)
         GENERAL = 'GENERAL', '일반 회원'
         ADMIN = 'ADMIN', '운영자'
         MANAGER = 'MANAGER', '총관리자'
+
+    class RegionChoices(models.TextChoices):
+        SEOUL = 'SEOUL', '서울'
+        GYEONGGI = 'GYEONGGI', '경기'
+        INCHEON = 'INCHEON', '인천'
+        ETC = 'ETC', '기타/온라인'
+    
+
     username = None
     email = models.EmailField(_('email address'), unique=True)
     nickname = models.CharField(max_length=50, unique=True, default='none', verbose_name = "닉네임")
     role = models.CharField( max_length=50, choices=RoleStatus.choices, default=RoleStatus.GENERAL, verbose_name='사용자 역할')
 
+    introduction = models.TextField(null=True, blank=True, verbose_name='자기소개')
+    region = models.CharField(
+        max_length=20,
+        choices=RegionChoices.choices,
+        default=RegionChoices.SEOUL,
+        verbose_name='선호 활동 지역',
+    )
+
     objects = CustomUserManager()
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nickname'] #email, password는 기본적으로 유구된다.
+    REQUIRED_FIELDS = ['nickname']
 
     def __str__(self):
         return self.nickname
@@ -144,7 +156,7 @@ class RSVP(models.Model):
 
 
 
-# FINANCIAL_TRANSACTION)
+# 재정 기록
 class FinancialTransaction(models.Model):
     group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='transactions')
     user = models.ForeignKey( User, on_delete=models.SET_NULL,  null=True,  blank=True,related_name='financial_records',  verbose_name='관련 사용자 (납부자/지출 처리자)')
@@ -158,4 +170,22 @@ class FinancialTransaction(models.Model):
     class Meta:
         ordering = ['-transaction_date']
 
+
+# 게시판
+class BoardPost(models.Model):
+    group = models.ForeignKey(Group, on_delete=models.CASCADE, related_name='board_posts')
+    author = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='board_posts')
+    title = models.CharField(max_length=200, verbose_name='제목')
+    content = models.TextField(verbose_name='내용')
+    is_notice = models.BooleanField(default=False, verbose_name='공지 여부')
+    views = models.PositiveIntegerField(default=0, verbose_name='조회수')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='작성일')
+
+    class Meta:
+        ordering = ['-is_notice', '-created_at']
+        verbose_name = '모임 게시글'
+        verbose_name_plural = '모임 게시글 목록'
+
+    def __str__(self):
+        return f'[{self.group.name}] {self.title}'
 

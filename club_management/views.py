@@ -3,132 +3,727 @@ from django.views import View
 from django.contrib.auth import authenticate, login, logout, get_user_model 
 from django.contrib import messages
 from django.http import Http404, HttpResponse
-
+from django.utils import timezone
+from django.db.models import Q, Count, Sum
+from django.contrib.auth.decorators import login_required
+from datetime import datetime
+from django.contrib.auth import update_session_auth_hash
 from .models import (
     User, 
     Group,      
     GroupMember,
     ActivitySchedule,
     RSVP,
-    FinancialTransaction
+    FinancialTransaction,
+    BoardPost,
 )
 
-from .mock_data import CLUBS_MOCK_DATA, GROUP_DETAIL_MOCK_DATA
+
+def _group_to_card_dict(group: Group):
+    category_badge_classes = {
+        "SPORTS": "bg-green-100 text-green-700",
+        "ART": "bg-pink-100 text-pink-700",
+        "MUSIC": "bg-purple-100 text-purple-700",
+        "COOKING": "bg-orange-100 text-orange-700",
+        "READING": "bg-blue-100 text-blue-700",
+        "OTHER": "bg-gray-100 text-gray-700",
+    }
+
+    members_count = GroupMember.objects.filter(group=group).count()
+    if members_count == 0:
+        # 아직 멤버 테이블 안 쓰고 있으면 리더 한 명 있다고 가정
+        members_count = 1
+
+    return {
+        "id": group.id,
+        "category": group.get_category_display() if hasattr(group, "get_category_display") else group.category,
+        "title": group.name,                         
+        "description": getattr(group, "description", ""),
+        "region": group.region,
+        "members": members_count,
+        "badge_class": category_badge_classes.get(group.category, "bg-gray-100 text-gray-700"),
+    }
+
 
 def discovery_page(request):
+    groups = Group.objects.filter(status__in=[Group.GroupStatus.RECRUITING, Group.GroupStatus.OPERATING])
+
+    query = request.GET.get('q', '')
+    selected_category = request.GET.get("category", "")
+    selected_region = request.GET.get("region", "")
+
+    # 필터링
+    if query:
+        groups = groups.filter(
+            Q(name__icontains=query) | 
+            Q(description__icontains=query)
+        )
+
+    if selected_category:
+        groups = groups.filter(category=selected_category)
+
+    if selected_region:
+        groups = groups.filter(region__icontains=selected_region)
+    groups = groups.order_by('-created_at')
+
+    # 카테고리 선택 옵션을 모델의 choices에서 가져오기
+    categories = Group.GroupCategory.choices
+    regions = Group.objects.values_list('region', flat=True).distinct()
+
     context = {
-        'clubs': CLUBS_MOCK_DATA 
+        "clubs": groups,       
+        "categories": categories,  
+        "regions": regions,
+        "selected_category": selected_category,
+        "selected_region": selected_region,
+        "query": query,
     }
-    
-    return render(request, 'discovery.html', context)
+
+    return render(request, "discovery.html", context)
 
 def group_detail_page(request, group_id):
-    group_id = int(group_id)
-    club_data = GROUP_DETAIL_MOCK_DATA.get(group_id)
-    
-    if club_data:
-        context = {'club': club_data}
+    # 모임 객체 + 멤버 수 함께 가져오기
+    group = get_object_or_404(
+        Group.objects.annotate(member_count=Count("groupmember")),
+        pk=group_id,
+    )
+
+    # 리더 정보
+    if group.leader:
+        leader_nickname = group.leader.nickname
+        leader_id = group.leader.email
     else:
-        context = {
-            'error_message': '모임을 찾을 수 없습니다.',
-            'group_id': group_id
-        }
+        leader_nickname = "리더 미지정"
+        leader_id = "-"
 
-    return render(request, 'group_detail.html', context)
+    # 멤버 상세 정보
+    group_members = (
+        GroupMember.objects.filter(group=group)
+        .select_related("user")
+        .order_by("joined_date")
+    )
+
+    members_detail = []
+    for gm in group_members:
+        if gm.member_role == GroupMember.MemberRole.LEADER:
+            role = "리더"
+        elif gm.member_role == GroupMember.MemberRole.ADMIN:
+            role = "총무"
+        elif gm.member_role == GroupMember.MemberRole.MEMBER:
+            role = "일반 멤버"
+        elif gm.member_role == GroupMember.MemberRole.PENDING:
+            role = "가입 대기 중"
+        else:
+            role = gm.get_member_role_display()
+
+        members_detail.append(
+            {
+                "nickname": gm.user.nickname if gm.user else "(탈퇴 회원)",
+                "role": role,
+            }
+        )
+
+    # 일정 / 출석
+    schedules = ActivitySchedule.objects.filter(group=group).order_by("date_time")
+    activities = []
+    for s in schedules:
+        activities.append(
+            {
+                "title": s.title,
+                "date": s.date_time.strftime("%m월 %d일 %H:%M"),
+                "fee": f"{s.participation_fee:,}원",
+                "status": "예정",
+                "attendees": RSVP.objects.filter(
+                    schedule=s,
+                    attendance_status=RSVP.AttendanceStatus.ATTENDING,
+                ).count(),
+            }
+        )
+
+    # 게시판 글 목록
+    board_posts = []
+    try:
+        from .models import BoardPost
+
+        posts_qs = (
+            BoardPost.objects.filter(group=group)
+            .select_related("author")
+            .order_by("-is_notice", "-created_at")
+        )
+        for post in posts_qs:
+            board_posts.append(
+                {
+                    "title": post.title,
+                    "author": post.author.nickname if post.author else "(탈퇴 회원)",
+                    "date": post.created_at.strftime("%Y-%m-%d %H:%M"),
+                    "views": post.views,
+                    "type": "공지" if getattr(post, "is_notice", False) else "일반",
+                }
+            )
+    except Exception:
+        board_posts = []
+
+    # 재정 요약 + 내역 전체
+    transactions_qs = FinancialTransaction.objects.filter(group=group).order_by(
+        "-transaction_date"
+    )
+    balance = transactions_qs.aggregate(total=Sum("amount"))["total"] or 0
+    last_tx = transactions_qs.first()
+    last_updated = (
+        last_tx.transaction_date.strftime("%Y-%m-%d") if last_tx else "-"
+    )
+
+    transactions = []
+    for tx in transactions_qs:
+        transactions.append(
+            {
+                "date": tx.transaction_date.strftime("%Y-%m-%d"),
+                "amount": tx.amount,
+                "description": tx.description,
+                "user_nickname": tx.user.nickname if tx.user else "(시스템)",
+            }
+        )
+
+    finance = {
+        "current_balance": balance,
+        "last_updated": last_updated,
+        "dues_status": [],         
+        "transactions": transactions,  
+    }
+
+    is_member = False
+    is_leader = False
+    is_treasurer = False
+
+    if request.user.is_authenticated:
+        membership = (
+            GroupMember.objects.filter(group=group, user=request.user)
+            .only("member_role")
+            .first()
+        )
+        if membership:
+            if membership.member_role in [
+                GroupMember.MemberRole.MEMBER,
+                GroupMember.MemberRole.LEADER,
+                GroupMember.MemberRole.ADMIN,
+            ]:
+                is_member = True
+            if membership.member_role == GroupMember.MemberRole.LEADER:
+                is_leader = True
+            if membership.member_role == GroupMember.MemberRole.ADMIN:
+                is_treasurer = True
+
+    club_context = {
+        "id": group.id,
+        "name": group.name,
+        "category": group.get_category_display(),
+        "region": group.region,
+        "members": group.member_count,
+        "description": group.description,
+        "leader_nickname": leader_nickname,
+        "leader_id": leader_id,
+        "activities": activities,
+        "board_posts": board_posts,         
+        "members_detail": members_detail,
+        "finance": finance,                 
+    }
+
+    context = {
+        "club": club_context,
+        "is_member": is_member,
+        "is_leader": is_leader,
+        "is_treasurer": is_treasurer,
+    }
+    return render(request, "group_detail.html", context)
 
 
+@login_required(login_url="/auth/")
+def group_join(request, group_id: int):
+    """모임 가입 신청: GroupMember 를 PENDING 상태로 생성/유지"""
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    member, created = GroupMember.objects.get_or_create(
+        group=group,
+        user=user,
+        defaults={"member_role": GroupMember.MemberRole.PENDING},
+    )
+
+    # 이미 멤버인 경우
+    if not created and member.member_role != GroupMember.MemberRole.PENDING:
+        messages.info(request, "이미 이 모임의 멤버입니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    if not created and member.member_role == GroupMember.MemberRole.PENDING:
+        messages.info(request, "이미 가입 신청이 접수되어 리더 승인 대기 중입니다.")
+    else:
+        messages.success(request, "가입 신청이 완료되었습니다. 리더의 승인 후 멤버로 참여할 수 있어요.")
+
+    return redirect("Wiki:group_detail", group_id=group.id)
+
+
+
+@login_required(login_url="/auth/")
+def member_approve(request, group_id: int, member_id: int):
+    """리더가 가입 대기 멤버를 승인 → 일반 멤버로 전환"""
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    if group.leader_id != user.id:
+        messages.error(request, "가입 승인은 모임 리더만 가능합니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    member = get_object_or_404(GroupMember, pk=member_id, group=group)
+
+    if member.member_role != GroupMember.MemberRole.PENDING:
+        messages.info(request, "이미 처리된 신청입니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    member.member_role = GroupMember.MemberRole.MEMBER
+    member.save()
+    messages.success(request, f"{member.user.nickname} 님을 멤버로 승인했습니다.")
+    return redirect("Wiki:group_detail", group_id=group.id)
+
+
+@login_required(login_url="/auth/")
+def member_reject(request, group_id: int, member_id: int):
+    """리더가 가입 대기 멤버를 거절 → 레코드 삭제"""
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    if group.leader_id != user.id:
+        messages.error(request, "가입 거절은 모임 리더만 가능합니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    member = get_object_or_404(GroupMember, pk=member_id, group=group)
+
+    if member.member_role != GroupMember.MemberRole.PENDING:
+        messages.info(request, "이미 처리된 신청입니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    nickname = member.user.nickname
+    member.delete()
+    messages.info(request, f"{nickname} 님의 가입 신청을 거절했습니다.")
+    return redirect("Wiki:group_detail", group_id=group.id)
+
+
+@login_required(login_url='/auth/')
+def schedule_create(request, group_id):
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    # 리더 / 총무만 가능
+    member = GroupMember.objects.filter(group=group, user=user).first()
+    allowed_roles = [GroupMember.MemberRole.LEADER, GroupMember.MemberRole.ADMIN]
+    if not member or member.member_role not in allowed_roles:
+        messages.error(request, "일정 등록은 리더 또는 총무만 가능합니다.")
+        return redirect('Wiki:group_detail', group_id=group.id)
+
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        date_time_str = request.POST.get("date_time", "").strip()  # datetime-local
+        location = request.POST.get("location", "").strip()
+        participation_fee_str = request.POST.get("participation_fee", "0").strip()
+        content = request.POST.get("content", "").strip()
+
+        if not (title and date_time_str and location):
+            messages.error(request, "제목, 일시, 장소는 꼭 입력해야 합니다.")
+            return render(request, "schedule_form.html", {"group": group})
+
+        try:
+            dt = datetime.fromisoformat(date_time_str)
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt)
+        except Exception:
+            messages.error(request, "일시 형식이 올바르지 않습니다.")
+            return render(request, "schedule_form.html", {"group": group})
+
+        try:
+            participation_fee = int(participation_fee_str or 0)
+        except ValueError:
+            participation_fee = 0
+
+        ActivitySchedule.objects.create(
+            group=group,
+            title=title,
+            date_time=dt,
+            location=location,
+            content=content,
+            participation_fee=participation_fee,
+        )
+        messages.success(request, "새 일정이 등록되었습니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    # GET
+    return render(request, "schedule_form.html", {"group": group})
+
+
+@login_required(login_url='/auth/')
+def board_post_create(request, group_id):
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    # 멤버(리더/총무/일반)만 가능, 가입 대기(PENDING)는 안 됨
+    member = GroupMember.objects.filter(group=group, user=user).first()
+    if not member or member.member_role == GroupMember.MemberRole.PENDING:
+        messages.error(request, "게시글 작성은 모임 멤버만 가능합니다.")
+        return redirect('Wiki:group_detail', group_id=group.id)
+
+    if request.method == "POST":
+        title = request.POST.get("title", "").strip()
+        content = request.POST.get("content", "").strip()
+        is_notice = bool(request.POST.get("is_notice"))
+
+        if not title or not content:
+            messages.error(request, "제목과 내용을 입력해주세요.")
+            return render(request, "board_post_form.html", {"group": group})
+
+        BoardPost.objects.create(
+            group=group,
+            author=user,
+            title=title,
+            content=content,
+            is_notice=is_notice,
+        )
+        messages.success(request, "게시글이 등록되었습니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    return render(request, "board_post_form.html", {"group": group})
+
+@login_required(login_url='/auth/')
+def finance_create(request, group_id):
+    group = get_object_or_404(Group, pk=group_id)
+    user = request.user
+
+    # 리더 / 총무만 가능
+    member = GroupMember.objects.filter(group=group, user=user).first()
+    allowed_roles = [GroupMember.MemberRole.LEADER, GroupMember.MemberRole.ADMIN]
+    if not member or member.member_role not in allowed_roles:
+        messages.error(request, "재정 기록 관리는 리더 또는 총무만 가능합니다.")
+        return redirect('Wiki:group_detail', group_id=group.id)
+
+    if request.method == "POST":
+        amount_str = request.POST.get("amount", "").strip()
+        description = request.POST.get("description", "").strip()
+
+        if not amount_str or not description:
+            messages.error(request, "금액과 내용을 입력해주세요.")
+            return render(request, "finance_form.html", {"group": group})
+
+        try:
+            amount = int(amount_str)
+        except ValueError:
+            messages.error(request, "금액은 숫자로 입력해주세요.")
+            return render(request, "finance_form.html", {"group": group})
+
+        FinancialTransaction.objects.create(
+            group=group,
+            user=user,
+            amount=amount,
+            description=description,
+        )
+        messages.success(request, "재정 기록이 추가되었습니다.")
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    return render(request, "finance_form.html", {"group": group})
+
+
+
+
+@login_required(login_url='/auth/')
 def my_page_view(request):
-    """마이페이지를 렌더링합니다."""
-    # 실제 구현 시, 로그인된 사용자의 데이터를 context로 전달해야 합니다.
-    return render(request, 'mypage.html')
+    user = request.user 
+
+    leading_groups = (
+        Group.objects.filter(leader=user)
+        .annotate(member_count=Count("groupmember"))
+        .order_by("-created_at")
+    )
+
+    joined_groups = (
+        Group.objects.filter(
+            groupmember__user=user,
+            groupmember__member_role__in=[
+                GroupMember.MemberRole.LEADER,
+                GroupMember.MemberRole.ADMIN,
+                GroupMember.MemberRole.MEMBER,
+            ],
+        )
+        .exclude(leader=user)
+        .annotate(member_count=Count("groupmember"))
+        .distinct()
+        .order_by("-created_at")
+    )
+
+    context = {
+        "leading_groups": leading_groups,
+        "joined_groups": joined_groups,
+    }
+    return render(request, "mypage.html", context)
+
+@login_required(login_url='/auth/')
+def create_group_view(request):
+    """새 모임 생성 (GET: 폼, POST: DB 저장)"""
+
+    # 1) 로그인 안 했으면 로그인 페이지로 보내기
+    if not request.user.is_authenticated:
+        messages.error(request, "모임 생성은 로그인 후 이용할 수 있습니다.")
+        return redirect("Wiki:login_page")
+
+    # 2) POST: 폼 입력 받아서 DB에 저장
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        category_raw = request.POST.get("category", "").strip()   # sports, art, ...
+        region_raw = request.POST.get("region", "").strip()       # seoul, gyeonggi, ...
+        description = request.POST.get("description", "").strip()
+        max_members_str = request.POST.get("max_members", "").strip()
+
+        # 필수값 체크
+        if not (name and category_raw and region_raw and description and max_members_str):
+            messages.error(request, "필수 항목을 모두 입력해주세요.")
+            context = {
+                "leader_nickname": request.user.nickname,
+                "leader_email": request.user.email,
+            }
+            return render(request, "create_group.html", context)
+
+        # 최대 인원 숫자 변환
+        try:
+            max_members = int(max_members_str)
+            if max_members <= 0:
+                raise ValueError
+        except ValueError:
+            messages.error(request, "최대 인원은 1 이상의 숫자로 입력해주세요.")
+            context = {
+                "leader_nickname": request.user.nickname,
+                "leader_email": request.user.email,
+            }
+            return render(request, "create_group.html", context)
+
+        # HTML select 값 → Group 모델의 enum 값으로 매핑
+        category_map = {
+            "sports": Group.GroupCategory.SPORTS,
+            "art": Group.GroupCategory.ART,
+            "music": Group.GroupCategory.MUSIC,
+            "cooking": Group.GroupCategory.COOKING,
+            "book": Group.GroupCategory.READING,
+            "etc": Group.GroupCategory.OTHER,
+        }
+        group_category = category_map.get(category_raw, Group.GroupCategory.OTHER)
+
+        # 지역값 보기 좋게 매핑
+        region_map = {
+            "seoul": "서울",
+            "gyeonggi": "경기",
+            "etc": "기타/온라인",
+        }
+        region = region_map.get(region_raw, region_raw)
+
+        # 3) Group 생성 (리더 = 현재 로그인 유저)
+        group = Group.objects.create(
+            name=name,
+            category=group_category,
+            region=region,
+            description=description,
+            max_members=max_members,
+            leader=request.user,
+        )
+
+        # 4) 그룹 멤버 테이블에 리더로 등록
+        GroupMember.objects.create(
+            user=request.user,
+            group=group,
+            member_role=GroupMember.MemberRole.LEADER,
+        )
+
+        messages.success(request, "새 모임이 성공적으로 생성되었습니다.")
+        # 생성 후 바로 상세 페이지로 이동
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    # 5) GET: 폼 보여주기 (리더 정보 = 현재 로그인 유저)
+    context = {
+        "leader_nickname": request.user.nickname,
+        "leader_email": request.user.email,
+    }
+    return render(request, "create_group.html", context)
+
+@login_required(login_url='/auth/')
+def join_group(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    
+    # 이미 가입했는지 확인 (중복 가입 방지)
+    if GroupMember.objects.filter(group=group, user=request.user).exists():
+        messages.warning(request, "이미 가입한 모임입니다.")
+        return redirect('Wiki:group_detail', group_id=group.id)
+
+    # 멤버로 추가 (기본값: 승인 대기 PENDING 또는 바로 가입 MEMBER)
+    GroupMember.objects.create(
+        group=group,
+        user=request.user,
+        member_role=GroupMember.MemberRole.PENDING # 또는 MEMBER
+    )
+    
+    messages.success(request, "가입 신청이 완료되었습니다!")
+    return redirect('Wiki:group_detail', group_id=group.id)
+
+@login_required(login_url='/auth/')
+def profile_edit_view(request):
+    """프로필 수정 (닉네임/자기소개/지역 + 비밀번호 변경)."""
+    user = request.user
+
+    if request.method == 'POST':
+        nickname = request.POST.get('nickname', '').strip()
+        introduction = request.POST.get('introduction', '').strip()
+        region = request.POST.get('region', '')
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        error = None
+
+        # 닉네임 검증
+        if not nickname:
+            error = '닉네임을 입력해주세요.'
+        elif User.objects.exclude(pk=user.pk).filter(nickname=nickname).exists():
+            error = '이미 사용 중인 닉네임입니다.'
+
+        # 비밀번호 변경이 필요한 경우만 체크
+        if not error and (current_password or new_password or confirm_password):
+            if not (current_password and new_password and confirm_password):
+                error = '비밀번호를 변경하려면 모든 비밀번호 입력란을 채워주세요.'
+            elif not user.check_password(current_password):
+                error = '현재 비밀번호가 일치하지 않습니다.'
+            elif new_password != confirm_password:
+                error = '새 비밀번호와 비밀번호 확인이 일치하지 않습니다.'
+            elif len(new_password) < 6:
+                error = '새 비밀번호는 6자 이상이어야 합니다.'
+            else:
+                user.set_password(new_password)
+                user.save()
+                update_session_auth_hash(request, user)  # 비밀번호 바꿔도 로그인 유지
+
+        if error:
+            context = {
+                'error': error,
+            }
+            return render(request, 'profile_edit.html', context)
+
+        # 프로필 정보 저장
+        user.nickname = nickname
+        user.introduction = introduction
+        user.region = region
+        user.save()
+
+        messages.success(request, '프로필 정보가 성공적으로 수정되었습니다.')
+        return redirect('Wiki:my_page')
+
+    # GET: 현재 정보 보여주기
+    return render(request, 'profile_edit.html')
+
 
 
 class AuthView(View):
-    template_name = 'login_signup.html'
+    template_name = "login_signup.html"
 
     def get(self, request):
-        """로그인/회원가입 페이지를 렌더링합니다."""
-        return render(request, self.template_name)
+        # 로그인 여부와 상관없이 항상 로그인/회원가입 페이지 보여주기
+        active_tab = request.GET.get("tab", "login")
+        if active_tab not in ("login", "signup"):
+            active_tab = "login"
+        return render(request, self.template_name, {"active_tab": active_tab})
 
     def post(self, request):
-        # ... 로그인 및 회원가입 POST 처리 로직 (이전과 동일) ...
-        # 여기서는 생략합니다. 실제 구현 시 View를 분리하는 것이 좋습니다.
-        return redirect('discovery')
-    
+        mode = request.POST.get("mode")
 
-    
+        if mode == "login":
+            email = request.POST.get("email", "").strip()
+            password = request.POST.get("password", "")
 
-class LoginView(View):
-    template_name = 'login_signup.html' 
+            if not email or not password:
+                messages.error(request, "이메일과 비밀번호를 모두 입력해주세요.")
+                return render(
+                    request,
+                    self.template_name,
+                    {"active_tab": "login", "login_email": email},
+                )
 
-    def get(self, request):
-        next_url = request.GET.get('next', '/')
-        return render(request, self.template_name, {'next': next_url})
+            user = authenticate(request, username=email, password=password)
 
-    def post(self, request):
-        email = request.POST.get('login-email')
-        password = request.POST.get('login-password')
-        next_url = request.POST.get('next', '/') 
+            if user is None:
+                messages.error(request, "이메일 또는 비밀번호가 올바르지 않습니다.")
+                return render(
+                    request,
+                    self.template_name,
+                    {"active_tab": "login", "login_email": email},
+                )
 
-        # 이메일을 사용자 이름(username)으로 변환 (Django 기본 User 모델은 username 필드를 사용)
-        try:
-            user = authenticate(request, username=email, password=password) 
-        except User.DoesNotExist:
-            messages.error(request, '이메일 또는 비밀번호가 올바르지 않습니다.')
-            return render(request, self.template_name)
-
-        if user is not None:
+            # 로그인 성공
             login(request, user)
-            messages.success(request, f'{user.username}님 환영합니다! 👋')
-            return redirect(next_url) 
-        else:
-            messages.error(request, '이메일 또는 비밀번호가 올바르지 않습니다.')
-            return render(request, self.template_name)
+            messages.success(request, f"{user.nickname}님, 환영합니다! 👋")
+            return redirect("Wiki:discovery")
 
+        elif mode == "signup":
+            email = request.POST.get("email", "").strip()
+            nickname = request.POST.get("nickname", "").strip()
+            password1 = request.POST.get("password1", "")
+            password2 = request.POST.get("password2", "")
 
-# 회원가입 페이지 View
-class SignupView(View):
-    template_name = 'login_signup.html'
+            # 기본 검증
+            if not email or not nickname or not password1 or not password2:
+                messages.error(request, "모든 필드를 입력해주세요.")
+                return render(
+                    request,
+                    self.template_name,
+                    {
+                        "active_tab": "signup",
+                        "signup_email": email,
+                        "signup_nickname": nickname,
+                    },
+                )
 
-    def post(self, request):
-        email = request.POST.get('signup-email')
-        password = request.POST.get('signup-password')
-        nickname = request.POST.get('signup-nickname')
-        
-        # 유효성 검사 
-        if not all([email, password, nickname]):
-            messages.error(request, '모든 필수 정보를 입력해주세요.')
-            return render(request, self.template_name)
+            if password1 != password2:
+                messages.error(request, "비밀번호와 비밀번호 확인이 일치하지 않습니다.")
+                return render(
+                    request,
+                    self.template_name,
+                    {
+                        "active_tab": "signup",
+                        "signup_email": email,
+                        "signup_nickname": nickname,
+                    },
+                )
 
-        # 비밀번호 길이 및 유효성 검사 
-        if len(password) < 6:
-            messages.error(request, '비밀번호는 6자 이상이어야 합니다.')
-            return render(request, self.template_name)
+            if User.objects.filter(email=email).exists():
+                messages.error(request, "이미 사용 중인 이메일입니다.")
+                return render(
+                    request,
+                    self.template_name,
+                    {
+                        "active_tab": "signup",
+                        "signup_email": email,
+                        "signup_nickname": nickname,
+                    },
+                )
 
-        # 이메일 중복 확인
-        if User.objects.filter(email=email).exists():
-            messages.error(request, '이미 사용 중인 이메일입니다.')
-            return render(request, self.template_name)
-
-        try:
+            # 실제 유저 생성
             user = User.objects.create_user(
                 email=email,
-                password=password,
+                password=password1,
                 nickname=nickname,
             )
-            user.save()
-            
-            messages.success(request, '🎉 회원가입이 성공적으로 완료되었습니다. 로그인해주세요.')
-            return redirect('login_url_name') 
-        except Exception as e:
-            messages.error(request, f'회원가입 중 오류가 발생했습니다: {e}')
-            return render(request, self.template_name)
+
+            messages.success(request, "회원가입이 완료되었습니다. 이제 로그인해주세요.")
+            return render(
+                request,
+                self.template_name,
+                {"active_tab": "login", "login_email": email},
+            )
+
+        messages.error(request, "잘못된 요청입니다.")
+        return redirect("Wiki:auth")
 
 
 def user_logout(request):
     logout(request)
-    messages.info(request, '로그아웃되었습니다. 다시 만나요!')
-    return redirect('discovery_url_name') 
-
-
-
+    messages.info(request, "로그아웃되었습니다. 다시 만나요! 👋")
+    return redirect("Wiki:discovery")
