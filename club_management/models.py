@@ -32,18 +32,33 @@ class CustomUserManager(BaseUserManager):
 class User(AbstractUser):
 
     class RoleStatus(models.TextChoices):
-        # ERD의 role (ENUM)
         GENERAL = 'GENERAL', '일반 회원'
         ADMIN = 'ADMIN', '운영자'
         MANAGER = 'MANAGER', '총관리자'
+
+    class RegionChoices(models.TextChoices):
+        SEOUL = 'SEOUL', '서울'
+        GYEONGGI = 'GYEONGGI', '경기'
+        INCHEON = 'INCHEON', '인천'
+        ETC = 'ETC', '기타/온라인'
+    
+
     username = None
     email = models.EmailField(_('email address'), unique=True)
     nickname = models.CharField(max_length=50, unique=True, default='none', verbose_name = "닉네임")
     role = models.CharField( max_length=50, choices=RoleStatus.choices, default=RoleStatus.GENERAL, verbose_name='사용자 역할')
 
+    introduction = models.TextField(null=True, blank=True, verbose_name='자기소개')
+    region = models.CharField(
+        max_length=20,
+        choices=RegionChoices.choices,
+        default=RegionChoices.SEOUL,
+        verbose_name='선호 활동 지역',
+    )
+
     objects = CustomUserManager()
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['nickname'] #email, password는 기본적으로 유구된다.
+    REQUIRED_FIELDS = ['nickname']
 
     def __str__(self):
         return self.nickname

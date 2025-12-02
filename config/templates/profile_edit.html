@@ -29,37 +29,57 @@
         <p class="text-lg text-gray-600 mb-8">다른 사용자에게 보여질 나의 프로필 정보를 편집할 수 있습니다.</p>
         
         <div class="bg-white p-8 rounded-xl shadow-2xl border-t-4 border-blue-500">
-            <form id="profile-edit-form" class="space-y-8">
+            <form id="profile-edit-form" method="post" class="space-y-8">
+                {% csrf_token %}
+
+                {% if error %}
+                    <div class="mb-4 p-3 bg-red-100 text-red-800 rounded-lg text-sm">
+                        {{ error }}
+                    </div>
+                {% endif %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="mb-4 p-3 bg-green-100 text-green-800 rounded-lg text-sm">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
                 
                 <div class="space-y-6">
                     <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">기본 정보</h3>
 
                     <div class="flex items-center space-x-6">
                         <div class="flex-shrink-0">
+                            <!-- 이미지는 프론트 미리보기만, 서버 저장 없음 -->
                             <img id="profile-preview" class="h-24 w-24 rounded-full object-cover border-4 border-gray-100 shadow-inner" 
-                                 src="https://via.placeholder.com/96/1D4ED8/FFFFFF?text=DM" alt="프로필 이미지">
+                                 src="https://via.placeholder.com/96/1D4ED8/FFFFFF?text={{ request.user.nickname|default:'U'|slice:':1' }}" alt="프로필 이미지">
                         </div>
                         <div class="space-y-1">
                             <label class="block text-sm font-medium text-gray-700">프로필 사진</label>
                             <input type="file" id="profile-image-upload" accept="image/*" class="hidden">
                             <button type="button" onclick="document.getElementById('profile-image-upload').click()"
                                 class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-lg transition duration-200">
-                                이미지 변경
+                                이미지 변경 (미리보기만)
                             </button>
-                            <p class="text-xs text-gray-500">JPG, PNG 파일 (최대 5MB)</p>
+                            <p class="text-xs text-gray-500">JPG, PNG 파일 (최대 5MB) — 서버에는 저장되지 않습니다.</p>
                         </div>
                     </div>
 
                     <div>
                         <label for="nickname" class="block text-sm font-medium text-gray-700 mb-1">닉네임</label>
-                        <input type="text" id="nickname" value="HobbyMaster" required placeholder="새로운 닉네임을 입력하세요"
+                        <input type="text" id="nickname" name="nickname"
+                            value="{{ request.POST.nickname|default:request.user.nickname }}"
+                            required placeholder="새로운 닉네임을 입력하세요"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" maxlength="15">
                         <p class="text-xs text-gray-500 mt-1">15자 이내로 설정 가능합니다.</p>
                     </div>
 
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">이메일 (ID)</label>
-                        <input type="email" id="email" value="hobbymaster@flow.com" disabled
+                        <input type="email" id="email"
+                            value="{{ request.user.email }}"
+                            disabled
                             class="w-full p-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-500 cursor-not-allowed">
                         <p class="text-xs text-gray-500 mt-1">이메일은 변경할 수 없습니다.</p>
                     </div>
@@ -70,18 +90,18 @@
 
                     <div>
                         <label for="introduction" class="block text-sm font-medium text-gray-700 mb-1">자기소개 (선택)</label>
-                        <textarea id="introduction" rows="4" placeholder="나의 취미나 관심사, 모임에서 기대하는 점 등을 자유롭게 작성해주세요."
-                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">안녕하세요! 저는 러닝과 독서를 좋아하는 HobbyMaster입니다. 새로운 사람들과 다양한 취미를 공유하고 싶어요.</textarea>
+                        <textarea id="introduction" name="introduction" rows="4" placeholder="나의 취미나 관심사, 모임에서 기대하는 점 등을 자유롭게 작성해주세요."
+                            class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">{% if request.POST.introduction %}{{ request.POST.introduction }}{% else %}{{ request.user.introduction|default_if_none:'' }}{% endif %}</textarea>
                     </div>
 
                     <div>
                         <label for="region" class="block text-sm font-medium text-gray-700 mb-1">선호 활동 지역</label>
-                        <select id="region"
+                        <select id="region" name="region"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-                            <option value="seoul" selected>서울</option>
-                            <option value="gyeonggi">경기</option>
-                            <option value="incheon">인천</option>
-                            <option value="etc">기타/온라인</option>
+                            <option value="SEOUL"   {% if request.user.region == 'SEOUL'   %}selected{% endif %}>서울</option>
+                            <option value="GYEONGGI" {% if request.user.region == 'GYEONGGI' %}selected{% endif %}>경기</option>
+                            <option value="INCHEON"  {% if request.user.region == 'INCHEON'  %}selected{% endif %}>인천</option>
+                            <option value="ETC"      {% if request.user.region == 'ETC'      %}selected{% endif %}>기타/온라인</option>
                         </select>
                     </div>
                 </div>
@@ -93,21 +113,25 @@
 
                     <h3 class="text-2xl font-bold text-gray-800 border-b pb-2">비밀번호 변경</h3>
 
+                    <p class="text-xs text-gray-500 mb-2">
+                        비밀번호를 변경하지 않으려면 아래 입력란을 비워두면 됩니다.
+                    </p>
+
                     <div>
                         <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">현재 비밀번호</label>
-                        <input type="password" id="current-password" placeholder="현재 사용 중인 비밀번호"
+                        <input type="password" id="current-password" name="current_password" placeholder="현재 사용 중인 비밀번호"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500">
                     </div>
 
                     <div>
                         <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호</label>
-                        <input type="password" id="new-password" placeholder="6자 이상의 새 비밀번호"
+                        <input type="password" id="new-password" name="new_password" placeholder="6자 이상의 새 비밀번호"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     
                     <div>
                         <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">새 비밀번호 확인</label>
-                        <input type="password" id="confirm-password" placeholder="새 비밀번호를 다시 입력하세요"
+                        <input type="password" id="confirm-password" name="confirm_password" placeholder="새 비밀번호를 다시 입력하세요"
                             class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
                     </div>
                     
@@ -115,20 +139,14 @@
                         class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 transform hover:scale-[1.005]">
                         💾 변경 사항 저장
                     </button>
-                    
-                    <div id="save-message" class="hidden mt-4 p-3 rounded-lg text-center font-medium bg-green-100 text-green-800"></div>
                 </div>
             </form>
         </div>
-
-        
-
     </main>
         
     {% include 'components/footer.html' %}
 
     <script>
-        // 프로필 이미지 미리보기 기능
         document.getElementById('profile-image-upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (file) {
@@ -138,24 +156,6 @@
                 }
                 reader.readAsDataURL(file);
             }
-        });
-
-        // 폼 제출 처리 (예시)
-        document.getElementById('profile-edit-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            // 실제 데이터 저장 로직은 여기에 구현합니다 (AJAX 요청 등)
-
-            const messageBox = document.getElementById('save-message');
-            messageBox.textContent = `✅ 프로필 정보가 성공적으로 업데이트되었습니다!`;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800');
-            messageBox.classList.add('bg-green-100', 'text-green-800');
-
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-                // 저장 후 마이페이지 등 다른 페이지로 이동 (선택 사항)
-                // window.location.href = '/my/'; 
-            }, 3000); 
         });
     </script>
 </body>

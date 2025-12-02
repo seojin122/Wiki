@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.db.models import Q, Count, Sum
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
+from django.contrib.auth import update_session_auth_hash
 from .models import (
     User, 
     Group,      
@@ -462,35 +463,89 @@ def my_page_view(request):
 
 @login_required(login_url='/auth/')
 def create_group_view(request):
-    if request.method == 'POST':
-        # 1. 폼 데이터 가져오기
-        name = request.POST.get('name')
-        category = request.POST.get('category')
-        region = request.POST.get('region')
-        description = request.POST.get('description')
-        max_members = request.POST.get('max_members')
+    """새 모임 생성 (GET: 폼, POST: DB 저장)"""
 
-        # 2. 유효성 검사 (간단하게)
-        if name and category and max_members:
-            new_group = Group.objects.create(
-                name=name,
-                category=category,
-                region=region,
-                description=description,
-                max_members=int(max_members),
-                leader=request.user  # 개설자를 리더 필드에도 저장
-            )
+    # 1) 로그인 안 했으면 로그인 페이지로 보내기
+    if not request.user.is_authenticated:
+        messages.error(request, "모임 생성은 로그인 후 이용할 수 있습니다.")
+        return redirect("Wiki:login_page")
 
-            # 3. 핵심: 멤버 테이블(GroupMember)에도 '리더'로 등재하기!
-            GroupMember.objects.create(
-                group=new_group,
-                user=request.user,
-                member_role=GroupMember.MemberRole.LEADER # 리더 역할 부여
-            )
-            
-            return redirect('Wiki:group_detail', group_id=new_group.id)
+    # 2) POST: 폼 입력 받아서 DB에 저장
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip()
+        category_raw = request.POST.get("category", "").strip()   # sports, art, ...
+        region_raw = request.POST.get("region", "").strip()       # seoul, gyeonggi, ...
+        description = request.POST.get("description", "").strip()
+        max_members_str = request.POST.get("max_members", "").strip()
 
-    return render(request, 'create_group.html')
+        # 필수값 체크
+        if not (name and category_raw and region_raw and description and max_members_str):
+            messages.error(request, "필수 항목을 모두 입력해주세요.")
+            context = {
+                "leader_nickname": request.user.nickname,
+                "leader_email": request.user.email,
+            }
+            return render(request, "create_group.html", context)
+
+        # 최대 인원 숫자 변환
+        try:
+            max_members = int(max_members_str)
+            if max_members <= 0:
+                raise ValueError
+        except ValueError:
+            messages.error(request, "최대 인원은 1 이상의 숫자로 입력해주세요.")
+            context = {
+                "leader_nickname": request.user.nickname,
+                "leader_email": request.user.email,
+            }
+            return render(request, "create_group.html", context)
+
+        # HTML select 값 → Group 모델의 enum 값으로 매핑
+        category_map = {
+            "sports": Group.GroupCategory.SPORTS,
+            "art": Group.GroupCategory.ART,
+            "music": Group.GroupCategory.MUSIC,
+            "cooking": Group.GroupCategory.COOKING,
+            "book": Group.GroupCategory.READING,
+            "etc": Group.GroupCategory.OTHER,
+        }
+        group_category = category_map.get(category_raw, Group.GroupCategory.OTHER)
+
+        # 지역값 보기 좋게 매핑
+        region_map = {
+            "seoul": "서울",
+            "gyeonggi": "경기",
+            "etc": "기타/온라인",
+        }
+        region = region_map.get(region_raw, region_raw)
+
+        # 3) Group 생성 (리더 = 현재 로그인 유저)
+        group = Group.objects.create(
+            name=name,
+            category=group_category,
+            region=region,
+            description=description,
+            max_members=max_members,
+            leader=request.user,
+        )
+
+        # 4) 그룹 멤버 테이블에 리더로 등록
+        GroupMember.objects.create(
+            user=request.user,
+            group=group,
+            member_role=GroupMember.MemberRole.LEADER,
+        )
+
+        messages.success(request, "새 모임이 성공적으로 생성되었습니다.")
+        # 생성 후 바로 상세 페이지로 이동
+        return redirect("Wiki:group_detail", group_id=group.id)
+
+    # 5) GET: 폼 보여주기 (리더 정보 = 현재 로그인 유저)
+    context = {
+        "leader_nickname": request.user.nickname,
+        "leader_email": request.user.email,
+    }
+    return render(request, "create_group.html", context)
 
 @login_required(login_url='/auth/')
 def join_group(request, group_id):
@@ -513,10 +568,60 @@ def join_group(request, group_id):
 
 @login_required(login_url='/auth/')
 def profile_edit_view(request):
-    context = {}
-    return render(request, 'profile_edit.html', context)
+    """프로필 수정 (닉네임/자기소개/지역 + 비밀번호 변경)."""
+    user = request.user
 
-# === 로그인 / 회원가입 뷰 ===
+    if request.method == 'POST':
+        nickname = request.POST.get('nickname', '').strip()
+        introduction = request.POST.get('introduction', '').strip()
+        region = request.POST.get('region', '')
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        error = None
+
+        # 닉네임 검증
+        if not nickname:
+            error = '닉네임을 입력해주세요.'
+        elif User.objects.exclude(pk=user.pk).filter(nickname=nickname).exists():
+            error = '이미 사용 중인 닉네임입니다.'
+
+        # 비밀번호 변경이 필요한 경우만 체크
+        if not error and (current_password or new_password or confirm_password):
+            if not (current_password and new_password and confirm_password):
+                error = '비밀번호를 변경하려면 모든 비밀번호 입력란을 채워주세요.'
+            elif not user.check_password(current_password):
+                error = '현재 비밀번호가 일치하지 않습니다.'
+            elif new_password != confirm_password:
+                error = '새 비밀번호와 비밀번호 확인이 일치하지 않습니다.'
+            elif len(new_password) < 6:
+                error = '새 비밀번호는 6자 이상이어야 합니다.'
+            else:
+                user.set_password(new_password)
+                user.save()
+                update_session_auth_hash(request, user)  # 비밀번호 바꿔도 로그인 유지
+
+        if error:
+            context = {
+                'error': error,
+            }
+            return render(request, 'profile_edit.html', context)
+
+        # 프로필 정보 저장
+        user.nickname = nickname
+        user.introduction = introduction
+        user.region = region
+        user.save()
+
+        messages.success(request, '프로필 정보가 성공적으로 수정되었습니다.')
+        return redirect('Wiki:my_page')
+
+    # GET: 현재 정보 보여주기
+    return render(request, 'profile_edit.html')
+
+
+
 class AuthView(View):
     template_name = "login_signup.html"
 
