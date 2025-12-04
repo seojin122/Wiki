@@ -4,6 +4,12 @@
 
 이 프로젝트는 **Django 기반 CRUD + 템플릿**을 실제 서비스 흐름에 맞게 구현하는 것을 목표로 합니다.
 
+
+
+
+https://github.com/user-attachments/assets/3310a26a-c04c-4639-9690-3bc2d100b0fa
+
+
 ---
 
 ## 1. 주요 기능
