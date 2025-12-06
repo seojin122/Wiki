@@ -118,7 +118,7 @@ https://github.com/user-attachments/assets/3310a26a-c04c-4639-9690-3bc2d100b0fa
 
 ## 2. 기술 스택
 
-- **Backend**: Django 5.x, Django ORM   
+- **Backend**: Django, Django ORM   
 - **Database**: SQLite (개발용) 또는 기타 RDB (설정에 따라 변경)
 - **Auth**: Django Custom User Model (email 로그인)
 - **Template / UI**:
